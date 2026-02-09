@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --opus: #7C3AED;
+  --codex: #10B981;
+  --clash: #F59E0B;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* Custom color utilities */
+.text-opus { color: var(--opus); }
+.text-codex { color: var(--codex); }
+.text-clash { color: var(--clash); }
+.bg-opus { background-color: var(--opus); }
+.bg-codex { background-color: var(--codex); }
+.bg-clash { background-color: var(--clash); }
+.border-opus { border-color: var(--opus); }
+.border-codex { border-color: var(--codex); }
+
+/* Opacity variants */
+.bg-opus\/10 { background-color: rgba(124, 58, 237, 0.1); }
+.bg-opus\/20 { background-color: rgba(124, 58, 237, 0.2); }
+.bg-codex\/10 { background-color: rgba(16, 185, 129, 0.1); }
+.bg-codex\/20 { background-color: rgba(16, 185, 129, 0.2); }
+.border-opus\/30 { border-color: rgba(124, 58, 237, 0.3); }
+.border-opus\/50 { border-color: rgba(124, 58, 237, 0.5); }
+.border-codex\/30 { border-color: rgba(16, 185, 129, 0.3); }
+.border-codex\/50 { border-color: rgba(16, 185, 129, 0.5); }
+
+/* Glow effects */
+.glow-opus {
+  box-shadow: 0 0 20px rgba(124, 58, 237, 0.5);
+}
+
+.glow-codex {
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+}
+
+/* Battle animation */
+@keyframes pulse-battle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.animate-battle {
+  animation: pulse-battle 2s ease-in-out infinite;
+}
