@@ -150,36 +150,36 @@ export default function PredictPage() {
   const agreeCount = markets.filter(m => m.opusCall.position === m.codexCall.position).length;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] pt-20 text-white">
+    <div className="min-h-screen bg-[#d4e8d1] pt-20">
       <div className="max-w-5xl mx-auto p-4">
         
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-1">Prediction Arena</h1>
-          <p className="text-gray-500 text-sm">Live markets from Polymarket + daily crypto calls</p>
+        <div className="bg-[#2d5a3d] rounded-2xl p-6 mb-6 border-4 border-[#1a3d28]">
+          <h1 className="text-xl font-bold text-white mb-1">Prediction Markets</h1>
+          <p className="text-[#a8d4b0] text-sm">Live markets from Polymarket + daily crypto predictions</p>
+          
+          {/* Prices */}
+          {prices.btc > 0 && (
+            <div className="flex gap-6 mt-4 text-sm">
+              <div>
+                <span className="text-[#a8d4b0]">BTC</span>
+                <span className="text-white font-mono ml-2">${prices.btc.toLocaleString()}</span>
+              </div>
+              <div>
+                <span className="text-[#a8d4b0]">ETH</span>
+                <span className="text-white font-mono ml-2">${prices.eth.toLocaleString()}</span>
+              </div>
+              <div>
+                <span className="text-[#a8d4b0]">SOL</span>
+                <span className="text-white font-mono ml-2">${prices.sol.toFixed(2)}</span>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Live Prices */}
-        {prices.btc > 0 && (
-          <div className="flex gap-6 mb-6 text-sm">
-            <div className="flex items-center gap-2">
-              <span className="text-gray-500">BTC</span>
-              <span className="font-mono font-medium">${prices.btc.toLocaleString()}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-gray-500">ETH</span>
-              <span className="font-mono font-medium">${prices.eth.toLocaleString()}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-gray-500">SOL</span>
-              <span className="font-mono font-medium">${prices.sol.toFixed(2)}</span>
-            </div>
-          </div>
-        )}
-
         {/* Filters */}
-        <div className="flex flex-wrap items-center gap-4 mb-6 pb-6 border-b border-gray-800">
-          <div className="flex gap-1 bg-gray-900 rounded-lg p-1">
+        <div className="flex flex-wrap items-center gap-4 mb-6">
+          <div className="flex gap-1 bg-white rounded-xl p-1 border-2 border-[#2d5a3d]">
             {[
               { key: 'today', label: 'Today' },
               { key: 'week', label: 'This Week' },
@@ -188,10 +188,10 @@ export default function PredictPage() {
               <button
                 key={key}
                 onClick={() => setTimeFilter(key as any)}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
                   timeFilter === key
-                    ? 'bg-white text-black'
-                    : 'text-gray-400 hover:text-white'
+                    ? 'bg-[#2d5a3d] text-white'
+                    : 'text-gray-600 hover:bg-[#f0f7f1]'
                 }`}
               >
                 {label}
@@ -202,24 +202,24 @@ export default function PredictPage() {
           <div className="flex gap-2 ml-auto text-sm">
             <button
               onClick={() => setAiFilter('all')}
-              className={`px-3 py-1.5 rounded-md transition ${
-                aiFilter === 'all' ? 'bg-gray-800 text-white' : 'text-gray-500 hover:text-white'
+              className={`px-3 py-2 rounded-lg transition ${
+                aiFilter === 'all' ? 'bg-[#2d5a3d] text-white' : 'bg-white text-gray-600 border-2 border-gray-200'
               }`}
             >
               All
             </button>
             <button
               onClick={() => setAiFilter('agree')}
-              className={`px-3 py-1.5 rounded-md transition ${
-                aiFilter === 'agree' ? 'bg-green-900/50 text-green-400' : 'text-gray-500 hover:text-white'
+              className={`px-3 py-2 rounded-lg transition ${
+                aiFilter === 'agree' ? 'bg-green-600 text-white' : 'bg-white text-gray-600 border-2 border-gray-200'
               }`}
             >
               Consensus ({agreeCount})
             </button>
             <button
               onClick={() => setAiFilter('disagree')}
-              className={`px-3 py-1.5 rounded-md transition ${
-                aiFilter === 'disagree' ? 'bg-orange-900/50 text-orange-400' : 'text-gray-500 hover:text-white'
+              className={`px-3 py-2 rounded-lg transition ${
+                aiFilter === 'disagree' ? 'bg-orange-500 text-white' : 'bg-white text-gray-600 border-2 border-gray-200'
               }`}
             >
               Split
@@ -227,36 +227,35 @@ export default function PredictPage() {
           </div>
         </div>
 
-        {/* Loading */}
+        {/* Loading/Error */}
         {loading && (
-          <div className="text-center py-16">
-            <div className="text-gray-500">Loading predictions...</div>
+          <div className="text-center py-16 bg-white rounded-2xl border-4 border-gray-200">
+            <p className="text-gray-500">Loading predictions...</p>
           </div>
         )}
 
-        {/* Error */}
         {error && (
-          <div className="text-center py-16">
-            <div className="text-red-400">{error}</div>
+          <div className="text-center py-16 bg-white rounded-2xl border-4 border-red-200">
+            <p className="text-red-600">{error}</p>
           </div>
         )}
 
         {/* Markets */}
         {!loading && !error && (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {filteredMarkets.map((market) => (
               <div 
                 key={market.id}
-                className={`bg-gray-900/50 rounded-xl border overflow-hidden ${
+                className={`bg-white rounded-2xl border-4 overflow-hidden ${
                   market.resolvesToday 
-                    ? 'border-green-500/30' 
-                    : 'border-gray-800'
+                    ? 'border-green-500' 
+                    : 'border-[#2d5a3d]'
                 }`}
               >
                 {/* Today indicator */}
                 {market.resolvesToday && (
-                  <div className="bg-green-500/10 text-green-400 text-xs px-4 py-1.5 border-b border-green-500/20">
-                    Resolves today 23:59 UTC
+                  <div className="bg-green-500 text-white text-xs px-4 py-1.5 text-center">
+                    Resolves today at 23:59 UTC
                   </div>
                 )}
 
@@ -267,18 +266,18 @@ export default function PredictPage() {
                       <div className="flex items-center gap-2 mb-2 text-xs">
                         <span className={`px-2 py-0.5 rounded ${
                           market.source === 'daily' 
-                            ? 'bg-green-500/10 text-green-400' 
-                            : 'bg-purple-500/10 text-purple-400'
+                            ? 'bg-green-100 text-green-700' 
+                            : 'bg-purple-100 text-purple-700'
                         }`}>
                           {market.source === 'daily' ? 'Daily' : 'Polymarket'}
                         </span>
-                        <span className="text-gray-600">{market.category}</span>
-                        <span className="text-gray-600">{getTimeUntil(market.endDate)}</span>
+                        <span className="text-gray-500">{market.category}</span>
+                        <span className="text-gray-500">{getTimeUntil(market.endDate)}</span>
                         {market.volume > 0 && (
-                          <span className="text-gray-600">{formatVolume(market.volume)} vol</span>
+                          <span className="text-gray-500">{formatVolume(market.volume)} vol</span>
                         )}
                       </div>
-                      <h3 className="font-medium text-white leading-snug">{market.question}</h3>
+                      <h3 className="font-medium text-[#2d5a3d] leading-snug">{market.question}</h3>
                       {market.description && (
                         <p className="text-gray-500 text-sm mt-1">{market.description}</p>
                       )}
@@ -286,13 +285,13 @@ export default function PredictPage() {
                     
                     {/* Odds */}
                     <div className="flex gap-2 text-sm">
-                      <div className="text-center px-3 py-2 bg-gray-800/50 rounded-lg">
+                      <div className="text-center px-3 py-2 bg-[#f0f7f1] rounded-lg">
                         <div className="text-gray-500 text-xs mb-0.5">Yes</div>
-                        <div className="font-mono font-medium text-green-400">{market.yesPrice.toFixed(0)}%</div>
+                        <div className="font-mono font-medium text-green-600">{market.yesPrice.toFixed(0)}%</div>
                       </div>
-                      <div className="text-center px-3 py-2 bg-gray-800/50 rounded-lg">
+                      <div className="text-center px-3 py-2 bg-[#fff5f5] rounded-lg">
                         <div className="text-gray-500 text-xs mb-0.5">No</div>
-                        <div className="font-mono font-medium text-red-400">{market.noPrice.toFixed(0)}%</div>
+                        <div className="font-mono font-medium text-red-500">{market.noPrice.toFixed(0)}%</div>
                       </div>
                     </div>
                   </div>
@@ -300,11 +299,11 @@ export default function PredictPage() {
                   {/* AI Calls */}
                   <div className="grid md:grid-cols-2 gap-3">
                     {/* Opus */}
-                    <div className="bg-gray-800/30 rounded-lg p-3">
+                    <div className="bg-[#fffcf5] rounded-lg p-3 border border-[#f0b866]">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-gray-400">Opus</span>
+                        <span className="text-sm font-medium text-[#8a6830]">Opus</span>
                         <span className={`text-sm font-medium ${
-                          market.opusCall.position === 'YES' ? 'text-green-400' : 'text-red-400'
+                          market.opusCall.position === 'YES' ? 'text-green-600' : 'text-red-500'
                         }`}>
                           {market.opusCall.position} · {market.opusCall.confidence}%
                         </span>
@@ -313,11 +312,11 @@ export default function PredictPage() {
                     </div>
 
                     {/* Codex */}
-                    <div className="bg-gray-800/30 rounded-lg p-3">
+                    <div className="bg-[#f5faff] rounded-lg p-3 border border-[#66b8f0]">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-gray-400">Codex</span>
+                        <span className="text-sm font-medium text-[#306088]">Codex</span>
                         <span className={`text-sm font-medium ${
-                          market.codexCall.position === 'YES' ? 'text-green-400' : 'text-red-400'
+                          market.codexCall.position === 'YES' ? 'text-green-600' : 'text-red-500'
                         }`}>
                           {market.codexCall.position} · {market.codexCall.confidence}%
                         </span>
@@ -328,8 +327,8 @@ export default function PredictPage() {
 
                   {/* Verdict */}
                   {market.opusCall.position !== market.codexCall.position && (
-                    <div className="mt-3 text-center text-xs text-orange-400/70">
-                      Models disagree on this one
+                    <div className="mt-3 text-center text-xs text-orange-600 bg-orange-50 rounded-lg py-2">
+                      Models disagree on this market
                     </div>
                   )}
                 </div>
@@ -339,10 +338,25 @@ export default function PredictPage() {
         )}
 
         {filteredMarkets.length === 0 && !loading && (
-          <div className="text-center py-16">
+          <div className="text-center py-16 bg-white rounded-2xl border-4 border-gray-200">
             <p className="text-gray-500">No predictions match your filters</p>
           </div>
         )}
+
+        {/* How It Works */}
+        <div className="bg-white rounded-2xl border-4 border-[#2d5a3d] p-6 mt-6">
+          <h2 className="font-bold text-[#2d5a3d] mb-4">How It Works</h2>
+          <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-600">
+            <div className="bg-[#f0f7f1] rounded-xl p-4">
+              <div className="text-[#2d5a3d] font-bold mb-2">Daily Predictions</div>
+              <p>Crypto price targets generated from live CoinGecko data. Resolves at 23:59 UTC based on closing prices.</p>
+            </div>
+            <div className="bg-[#f0f7f1] rounded-xl p-4">
+              <div className="text-[#2d5a3d] font-bold mb-2">Polymarket Integration</div>
+              <p>Real prediction markets pulled via Polymarket API. Odds and volumes update every minute.</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
