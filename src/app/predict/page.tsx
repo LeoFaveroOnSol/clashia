@@ -2,210 +2,255 @@
 
 import { useEffect, useState } from 'react';
 
-interface PredictionMarket {
+interface DailyPrediction {
   id: string;
   question: string;
-  source: 'polymarket' | 'kalshi';
-  category: string;
-  currentOdds: number; // market odds in %
-  resolutionDate: string;
+  category: 'crypto' | 'sports' | 'markets' | 'other';
+  targetValue?: number;
+  currentValue?: number;
+  unit?: string;
+  resolvesAt: string; // ISO datetime
   resolved: boolean;
-  outcome?: boolean; // true = YES won, false = NO won
+  outcome?: boolean;
   opusCall: {
     position: 'YES' | 'NO';
     confidence: number;
     reasoning: string;
-    calledAt: string;
-    calledOdds: number;
   };
   codexCall: {
     position: 'YES' | 'NO';
     confidence: number;
     reasoning: string;
-    calledAt: string;
-    calledOdds: number;
   };
 }
 
-interface AIStats {
-  correct: number;
-  total: number;
-  winRate: number;
-  avgConfidence: number;
-  bestCall: string;
+function getTimeUntil(date: string): string {
+  const diff = new Date(date).getTime() - Date.now();
+  if (diff <= 0) return 'Resolving...';
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  if (hours > 0) return `${hours}h ${mins}m`;
+  return `${mins}m`;
 }
 
-// Mock data - replace with real API
-const mockMarkets: PredictionMarket[] = [
+function formatValue(value: number, unit?: string): string {
+  if (unit === '$') return `$${value.toLocaleString()}`;
+  if (unit === '%') return `${value}%`;
+  return value.toLocaleString();
+}
+
+// Get today's date string
+const today = new Date().toISOString().split('T')[0];
+const endOfDay = `${today}T23:59:59Z`;
+
+// Mock daily predictions - these would come from an API
+const generateDailyPredictions = (): DailyPrediction[] => [
   {
-    id: '1',
-    question: 'Will Bitcoin hit $150k before July 2026?',
-    source: 'polymarket',
-    category: 'Crypto',
-    currentOdds: 42,
-    resolutionDate: '2026-07-01',
+    id: 'btc-daily',
+    question: 'Bitcoin closes above $97,000 today?',
+    category: 'crypto',
+    targetValue: 97000,
+    currentValue: 96450,
+    unit: '$',
+    resolvesAt: endOfDay,
     resolved: false,
     opusCall: {
       position: 'YES',
-      confidence: 72,
-      reasoning: 'ETF inflows + halving cycle suggests continued bull run. Historical patterns support new ATH.',
-      calledAt: '2026-02-08T10:00:00Z',
-      calledOdds: 38,
-    },
-    codexCall: {
-      position: 'NO',
-      confidence: 65,
-      reasoning: 'Macro headwinds and regulatory pressure likely to cap upside. $120k more realistic ceiling.',
-      calledAt: '2026-02-08T10:05:00Z',
-      calledOdds: 38,
-    },
-  },
-  {
-    id: '2',
-    question: 'Fed cuts rates by 50bps+ in March 2026?',
-    source: 'kalshi',
-    category: 'Economics',
-    currentOdds: 28,
-    resolutionDate: '2026-03-20',
-    resolved: false,
-    opusCall: {
-      position: 'NO',
-      confidence: 85,
-      reasoning: 'Inflation still above target. Fed will maintain hawkish stance, 25bps max.',
-      calledAt: '2026-02-07T14:00:00Z',
-      calledOdds: 31,
-    },
-    codexCall: {
-      position: 'NO',
-      confidence: 78,
-      reasoning: 'Economic data doesn\'t support aggressive cuts. Market pricing in too much dovishness.',
-      calledAt: '2026-02-07T14:02:00Z',
-      calledOdds: 31,
-    },
-  },
-  {
-    id: '3',
-    question: 'Solana flips Ethereum market cap in 2026?',
-    source: 'polymarket',
-    category: 'Crypto',
-    currentOdds: 15,
-    resolutionDate: '2026-12-31',
-    resolved: false,
-    opusCall: {
-      position: 'NO',
-      confidence: 90,
-      reasoning: 'ETH has too much institutional backing and DeFi TVL. SOL would need 10x while ETH stagnates.',
-      calledAt: '2026-02-06T09:00:00Z',
-      calledOdds: 18,
-    },
-    codexCall: {
-      position: 'YES',
-      confidence: 35,
-      reasoning: 'Contrarian take: SOL momentum + retail adoption could surprise. Low odds = high EV if right.',
-      calledAt: '2026-02-06T09:03:00Z',
-      calledOdds: 18,
-    },
-  },
-  {
-    id: '4',
-    question: 'AI model beats human at StarCraft 3 by June?',
-    source: 'kalshi',
-    category: 'Tech',
-    currentOdds: 67,
-    resolutionDate: '2026-06-30',
-    resolved: true,
-    outcome: true,
-    opusCall: {
-      position: 'YES',
-      confidence: 82,
-      reasoning: 'DeepMind already did SC2. New architectures + more compute = inevitable.',
-      calledAt: '2026-01-15T12:00:00Z',
-      calledOdds: 55,
-    },
-    codexCall: {
-      position: 'YES',
-      confidence: 75,
-      reasoning: 'SC3 complexity higher but AI progress exponential. Likely by Q2.',
-      calledAt: '2026-01-15T12:01:00Z',
-      calledOdds: 55,
-    },
-  },
-  {
-    id: '5',
-    question: 'SpaceX Starship reaches orbit by April 2026?',
-    source: 'polymarket',
-    category: 'Tech',
-    currentOdds: 78,
-    resolutionDate: '2026-04-30',
-    resolved: true,
-    outcome: true,
-    opusCall: {
-      position: 'YES',
-      confidence: 70,
-      reasoning: 'Recent test progress promising. Musk timeline usually 2x but orbit achievable.',
-      calledAt: '2026-01-20T08:00:00Z',
-      calledOdds: 62,
+      confidence: 68,
+      reasoning: 'Bullish momentum from Asia session. Support at $96k holding strong. Expect push to $97.5k.',
     },
     codexCall: {
       position: 'NO',
       confidence: 55,
-      reasoning: 'FAA delays + technical challenges. May slip to Q3.',
-      calledAt: '2026-01-20T08:02:00Z',
-      calledOdds: 62,
+      reasoning: 'Resistance at $97k tested 3x this week. Volume declining. Likely rejection.',
+    },
+  },
+  {
+    id: 'sol-daily',
+    question: 'Solana stays above $190 at close?',
+    category: 'crypto',
+    targetValue: 190,
+    currentValue: 193.5,
+    unit: '$',
+    resolvesAt: endOfDay,
+    resolved: false,
+    opusCall: {
+      position: 'YES',
+      confidence: 75,
+      reasoning: 'Strong DEX volume. Memecoin activity keeping demand high. $190 is solid support.',
+    },
+    codexCall: {
+      position: 'YES',
+      confidence: 82,
+      reasoning: 'Currently $3.50 above target with stable price action. High probability hold.',
+    },
+  },
+  {
+    id: 'eth-btc',
+    question: 'ETH/BTC ratio increases today?',
+    category: 'crypto',
+    targetValue: 0.0342,
+    currentValue: 0.0338,
+    resolvesAt: endOfDay,
+    resolved: false,
+    opusCall: {
+      position: 'NO',
+      confidence: 70,
+      reasoning: 'BTC dominance trending up. ETH underperforming in current cycle. Ratio likely flat or down.',
+    },
+    codexCall: {
+      position: 'YES',
+      confidence: 45,
+      reasoning: 'Oversold on daily. Mean reversion play. Small bounce possible.',
+    },
+  },
+  {
+    id: 'sp500-daily',
+    question: 'S&P 500 closes green today?',
+    category: 'markets',
+    currentValue: 0.15,
+    unit: '%',
+    resolvesAt: endOfDay,
+    resolved: false,
+    opusCall: {
+      position: 'YES',
+      confidence: 62,
+      reasoning: 'Futures up pre-market. No major economic data today. Path of least resistance is up.',
+    },
+    codexCall: {
+      position: 'YES',
+      confidence: 58,
+      reasoning: 'Positive sentiment from tech earnings. Likely modest gains.',
+    },
+  },
+  {
+    id: 'nba-lakers',
+    question: 'Lakers beat Celtics tonight?',
+    category: 'sports',
+    resolvesAt: `${today}T03:30:00Z`, // Game time
+    resolved: false,
+    opusCall: {
+      position: 'NO',
+      confidence: 72,
+      reasoning: 'Celtics home court + better record. Lakers missing key rotation player. Celtics -5.5 spread.',
+    },
+    codexCall: {
+      position: 'NO',
+      confidence: 78,
+      reasoning: 'Historical H2H favors Celtics. Lakers 2-8 in last 10 road games vs top teams.',
+    },
+  },
+  {
+    id: 'gas-eth',
+    question: 'ETH gas stays below 20 gwei average?',
+    category: 'crypto',
+    targetValue: 20,
+    currentValue: 15,
+    unit: 'gwei',
+    resolvesAt: endOfDay,
+    resolved: false,
+    opusCall: {
+      position: 'YES',
+      confidence: 80,
+      reasoning: 'L2 adoption reducing mainnet congestion. No major mints scheduled. Should stay low.',
+    },
+    codexCall: {
+      position: 'YES',
+      confidence: 85,
+      reasoning: 'Current average well below target. No catalysts for spike. Easy YES.',
+    },
+  },
+  // Yesterday's resolved predictions
+  {
+    id: 'btc-yesterday',
+    question: 'Bitcoin closed above $96,000 yesterday?',
+    category: 'crypto',
+    targetValue: 96000,
+    currentValue: 96780,
+    unit: '$',
+    resolvesAt: new Date(Date.now() - 86400000).toISOString(),
+    resolved: true,
+    outcome: true,
+    opusCall: {
+      position: 'YES',
+      confidence: 71,
+      reasoning: 'Held support, expected close above target.',
+    },
+    codexCall: {
+      position: 'YES',
+      confidence: 65,
+      reasoning: 'Trend continuation likely.',
+    },
+  },
+  {
+    id: 'spy-yesterday',
+    question: 'S&P 500 closed red yesterday?',
+    category: 'markets',
+    resolvesAt: new Date(Date.now() - 86400000).toISOString(),
+    resolved: true,
+    outcome: false, // It closed green
+    opusCall: {
+      position: 'YES',
+      confidence: 55,
+      reasoning: 'Overbought conditions suggested pullback.',
+    },
+    codexCall: {
+      position: 'NO',
+      confidence: 60,
+      reasoning: 'Momentum too strong for red day.',
     },
   },
 ];
 
-function calculateStats(markets: PredictionMarket[], ai: 'opus' | 'codex'): AIStats {
-  const resolved = markets.filter(m => m.resolved);
-  let correct = 0;
-  let totalConfidence = 0;
-
-  resolved.forEach(m => {
-    const call = ai === 'opus' ? m.opusCall : m.codexCall;
-    const wasCorrect = (call.position === 'YES' && m.outcome) || (call.position === 'NO' && !m.outcome);
-    if (wasCorrect) correct++;
-    totalConfidence += call.confidence;
-  });
-
-  const allCalls = markets.map(m => ai === 'opus' ? m.opusCall : m.codexCall);
-  const avgConf = allCalls.reduce((sum, c) => sum + c.confidence, 0) / allCalls.length;
-
-  return {
-    correct,
-    total: resolved.length,
-    winRate: resolved.length > 0 ? (correct / resolved.length) * 100 : 0,
-    avgConfidence: avgConf,
-    bestCall: 'BTC $150k prediction',
-  };
-}
-
 export default function PredictPage() {
-  const [markets, setMarkets] = useState<PredictionMarket[]>(mockMarkets);
-  const [filter, setFilter] = useState<'all' | 'active' | 'resolved'>('all');
+  const [predictions, setPredictions] = useState<DailyPrediction[]>([]);
+  const [filter, setFilter] = useState<'today' | 'resolved'>('today');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [timeNow, setTimeNow] = useState(new Date());
 
-  const opusStats = calculateStats(markets, 'opus');
-  const codexStats = calculateStats(markets, 'codex');
+  useEffect(() => {
+    setPredictions(generateDailyPredictions());
+    const interval = setInterval(() => setTimeNow(new Date()), 60000);
+    return () => clearInterval(interval);
+  }, []);
 
-  const categories = ['all', ...new Set(markets.map(m => m.category))];
-  
-  const filteredMarkets = markets.filter(m => {
-    if (filter === 'active' && m.resolved) return false;
-    if (filter === 'resolved' && !m.resolved) return false;
-    if (categoryFilter !== 'all' && m.category !== categoryFilter) return false;
-    return true;
-  });
+  const todayPredictions = predictions.filter(p => !p.resolved);
+  const resolvedPredictions = predictions.filter(p => p.resolved);
+  const displayPredictions = filter === 'today' ? todayPredictions : resolvedPredictions;
 
-  const getResultBadge = (market: PredictionMarket, ai: 'opus' | 'codex') => {
-    if (!market.resolved) return null;
-    const call = ai === 'opus' ? market.opusCall : market.codexCall;
-    const wasCorrect = (call.position === 'YES' && market.outcome) || (call.position === 'NO' && !market.outcome);
-    return wasCorrect ? (
-      <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">✓ Correct</span>
-    ) : (
-      <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">✗ Wrong</span>
-    );
+  const filteredPredictions = displayPredictions.filter(p => 
+    categoryFilter === 'all' || p.category === categoryFilter
+  );
+
+  // Calculate stats
+  const calculateStats = (ai: 'opus' | 'codex') => {
+    const resolved = predictions.filter(p => p.resolved);
+    let correct = 0;
+    resolved.forEach(p => {
+      const call = ai === 'opus' ? p.opusCall : p.codexCall;
+      const wasCorrect = (call.position === 'YES' && p.outcome) || (call.position === 'NO' && !p.outcome);
+      if (wasCorrect) correct++;
+    });
+    return { correct, total: resolved.length, rate: resolved.length > 0 ? (correct / resolved.length * 100) : 0 };
+  };
+
+  const opusStats = calculateStats('opus');
+  const codexStats = calculateStats('codex');
+
+  const getCategoryIcon = (cat: string) => {
+    switch (cat) {
+      case 'crypto': return '₿';
+      case 'sports': return '🏀';
+      case 'markets': return '📈';
+      default: return '🎯';
+    }
+  };
+
+  const getResultBadge = (pred: DailyPrediction, ai: 'opus' | 'codex') => {
+    if (!pred.resolved) return null;
+    const call = ai === 'opus' ? pred.opusCall : pred.codexCall;
+    const wasCorrect = (call.position === 'YES' && pred.outcome) || (call.position === 'NO' && !pred.outcome);
+    return wasCorrect ? '✅' : '❌';
   };
 
   return (
@@ -213,63 +258,33 @@ export default function PredictPage() {
       <div className="max-w-6xl mx-auto p-4">
         
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-[#2d5a3d] mb-2">🎯 Prediction Markets Arena</h1>
-          <p className="text-[#4a8f5c]">AI vs AI on real prediction markets (Polymarket, Kalshi)</p>
+        <div className="text-center mb-6">
+          <h1 className="text-4xl font-bold text-[#2d5a3d] mb-2">🎯 Daily Predictions</h1>
+          <p className="text-[#4a8f5c]">AI calls that resolve TODAY — see results in real-time</p>
+          <p className="text-sm text-gray-500 mt-1">
+            Last updated: {timeNow.toLocaleTimeString()} • Resolves at 23:59 UTC
+          </p>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          {/* Opus Stats */}
-          <div className="bg-gradient-to-br from-[#fff8e8] to-[#fff0d0] rounded-2xl border-4 border-[#f0b866] p-6 shadow-lg">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-16 h-16 bg-[#f0b866] rounded-xl flex items-center justify-center text-3xl">
-                🧠
-              </div>
-              <div>
-                <h3 className="font-bold text-xl text-[#8a6830]">Claude Opus</h3>
-                <p className="text-sm text-[#b89860]">Deep reasoning & analysis</p>
-              </div>
+        {/* Live Stats Banner */}
+        <div className="bg-white rounded-2xl border-4 border-[#2d5a3d] p-4 mb-6 shadow-lg">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+            <div>
+              <div className="text-sm text-gray-500">Today's Predictions</div>
+              <div className="text-2xl font-bold text-[#2d5a3d]">{todayPredictions.length}</div>
             </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-white/60 rounded-xl p-3 text-center">
-                <div className="text-2xl font-bold text-[#2d5a3d]">{opusStats.correct}/{opusStats.total}</div>
-                <div className="text-xs text-gray-500">Correct</div>
-              </div>
-              <div className="bg-white/60 rounded-xl p-3 text-center">
-                <div className="text-2xl font-bold text-[#2d5a3d]">{opusStats.winRate.toFixed(0)}%</div>
-                <div className="text-xs text-gray-500">Win Rate</div>
-              </div>
-              <div className="bg-white/60 rounded-xl p-3 text-center">
-                <div className="text-2xl font-bold text-[#2d5a3d]">{opusStats.avgConfidence.toFixed(0)}%</div>
-                <div className="text-xs text-gray-500">Avg Conf</div>
-              </div>
+            <div>
+              <div className="text-sm text-gray-500">🧠 Opus Record</div>
+              <div className="text-2xl font-bold text-[#f0b866]">{opusStats.correct}/{opusStats.total}</div>
             </div>
-          </div>
-
-          {/* Codex Stats */}
-          <div className="bg-gradient-to-br from-[#e8f4ff] to-[#d0e8ff] rounded-2xl border-4 border-[#66b8f0] p-6 shadow-lg">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-16 h-16 bg-[#66b8f0] rounded-xl flex items-center justify-center text-3xl">
-                🤖
-              </div>
-              <div>
-                <h3 className="font-bold text-xl text-[#306088]">OpenAI Codex</h3>
-                <p className="text-sm text-[#6098b8]">Pattern recognition & data</p>
-              </div>
+            <div>
+              <div className="text-sm text-gray-500">🤖 Codex Record</div>
+              <div className="text-2xl font-bold text-[#66b8f0]">{codexStats.correct}/{codexStats.total}</div>
             </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-white/60 rounded-xl p-3 text-center">
-                <div className="text-2xl font-bold text-[#2d5a3d]">{codexStats.correct}/{codexStats.total}</div>
-                <div className="text-xs text-gray-500">Correct</div>
-              </div>
-              <div className="bg-white/60 rounded-xl p-3 text-center">
-                <div className="text-2xl font-bold text-[#2d5a3d]">{codexStats.winRate.toFixed(0)}%</div>
-                <div className="text-xs text-gray-500">Win Rate</div>
-              </div>
-              <div className="bg-white/60 rounded-xl p-3 text-center">
-                <div className="text-2xl font-bold text-[#2d5a3d]">{codexStats.avgConfidence.toFixed(0)}%</div>
-                <div className="text-xs text-gray-500">Avg Conf</div>
+            <div>
+              <div className="text-sm text-gray-500">Leader</div>
+              <div className="text-2xl font-bold text-[#2d5a3d]">
+                {opusStats.rate > codexStats.rate ? '🧠 Opus' : opusStats.rate < codexStats.rate ? '🤖 Codex' : '🤝 Tied'}
               </div>
             </div>
           </div>
@@ -278,171 +293,180 @@ export default function PredictPage() {
         {/* Filters */}
         <div className="flex flex-wrap gap-3 mb-6">
           <div className="flex gap-2">
-            {['all', 'active', 'resolved'].map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f as any)}
-                className={`px-4 py-2 rounded-xl font-medium transition ${
-                  filter === f
-                    ? 'bg-[#2d5a3d] text-white'
-                    : 'bg-white text-gray-600 border-2 border-gray-200 hover:border-[#4a8f5c]'
-                }`}
-              >
-                {f.charAt(0).toUpperCase() + f.slice(1)}
-              </button>
-            ))}
+            <button
+              onClick={() => setFilter('today')}
+              className={`px-5 py-2 rounded-xl font-medium transition flex items-center gap-2 ${
+                filter === 'today'
+                  ? 'bg-[#2d5a3d] text-white'
+                  : 'bg-white text-gray-600 border-2 border-gray-200'
+              }`}
+            >
+              ⚡ Today's Calls
+            </button>
+            <button
+              onClick={() => setFilter('resolved')}
+              className={`px-5 py-2 rounded-xl font-medium transition flex items-center gap-2 ${
+                filter === 'resolved'
+                  ? 'bg-[#2d5a3d] text-white'
+                  : 'bg-white text-gray-600 border-2 border-gray-200'
+              }`}
+            >
+              ✅ Resolved
+            </button>
           </div>
+          
           <div className="flex gap-2 ml-auto">
-            {categories.map((cat) => (
+            {['all', 'crypto', 'sports', 'markets'].map(cat => (
               <button
                 key={cat}
                 onClick={() => setCategoryFilter(cat)}
                 className={`px-3 py-2 rounded-xl text-sm font-medium transition ${
                   categoryFilter === cat
                     ? 'bg-[#4a8f5c] text-white'
-                    : 'bg-white text-gray-600 border-2 border-gray-200 hover:border-[#4a8f5c]'
+                    : 'bg-white text-gray-600 border-2 border-gray-200'
                 }`}
               >
-                {cat === 'all' ? '🌐 All' : cat}
+                {cat === 'all' ? '🌐 All' : `${getCategoryIcon(cat)} ${cat.charAt(0).toUpperCase() + cat.slice(1)}`}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Markets List */}
-        <div className="space-y-4">
-          {filteredMarkets.map((market) => (
+        {/* Predictions Grid */}
+        <div className="grid md:grid-cols-2 gap-4">
+          {filteredPredictions.map((pred) => (
             <div 
-              key={market.id}
+              key={pred.id}
               className={`bg-white rounded-2xl border-4 shadow-lg overflow-hidden ${
-                market.resolved ? 'border-gray-300' : 'border-[#2d5a3d]'
+                pred.resolved 
+                  ? 'border-gray-300 opacity-90' 
+                  : 'border-[#2d5a3d]'
               }`}
             >
-              {/* Market Header */}
+              {/* Header */}
               <div className="p-4 border-b border-gray-100">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${
-                        market.source === 'polymarket' 
-                          ? 'bg-purple-100 text-purple-700' 
-                          : 'bg-blue-100 text-blue-700'
-                      }`}>
-                        {market.source === 'polymarket' ? '🟣 Polymarket' : '🔵 Kalshi'}
-                      </span>
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                        {market.category}
-                      </span>
-                      {market.resolved && (
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${
-                          market.outcome ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                        }`}>
-                          Resolved: {market.outcome ? 'YES ✓' : 'NO ✗'}
-                        </span>
-                      )}
-                    </div>
-                    <h3 className="font-bold text-lg text-[#2d5a3d]">{market.question}</h3>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm text-gray-500">Market Odds</div>
-                    <div className="text-2xl font-bold text-[#2d5a3d]">{market.currentOdds}%</div>
-                    <div className="text-xs text-gray-400">
-                      {market.resolved ? 'Final' : `Resolves ${new Date(market.resolutionDate).toLocaleDateString()}`}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* AI Calls */}
-              <div className="grid md:grid-cols-2 divide-x divide-gray-100">
-                {/* Opus Call */}
-                <div className="p-4 bg-[#fffcf5]">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">🧠</span>
-                      <span className="font-bold text-[#8a6830]">Opus</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {getResultBadge(market, 'opus')}
-                      <span className={`font-bold text-lg ${
-                        market.opusCall.position === 'YES' ? 'text-green-600' : 'text-red-500'
-                      }`}>
-                        {market.opusCall.position}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="bg-white/80 rounded-lg p-3 mb-2">
-                    <p className="text-sm text-gray-600">"{market.opusCall.reasoning}"</p>
-                  </div>
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>Confidence: <strong>{market.opusCall.confidence}%</strong></span>
-                    <span>Called at {market.opusCall.calledOdds}% odds</span>
-                  </div>
-                </div>
-
-                {/* Codex Call */}
-                <div className="p-4 bg-[#f5faff]">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">🤖</span>
-                      <span className="font-bold text-[#306088]">Codex</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {getResultBadge(market, 'codex')}
-                      <span className={`font-bold text-lg ${
-                        market.codexCall.position === 'YES' ? 'text-green-600' : 'text-red-500'
-                      }`}>
-                        {market.codexCall.position}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="bg-white/80 rounded-lg p-3 mb-2">
-                    <p className="text-sm text-gray-600">"{market.codexCall.reasoning}"</p>
-                  </div>
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>Confidence: <strong>{market.codexCall.confidence}%</strong></span>
-                    <span>Called at {market.codexCall.calledOdds}% odds</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Agreement/Disagreement Badge */}
-              <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 text-center">
-                {market.opusCall.position === market.codexCall.position ? (
-                  <span className="text-sm text-green-600 font-medium">
-                    🤝 Both AIs agree: {market.opusCall.position}
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xl">{getCategoryIcon(pred.category)}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                    pred.category === 'crypto' ? 'bg-orange-100 text-orange-700' :
+                    pred.category === 'sports' ? 'bg-green-100 text-green-700' :
+                    'bg-blue-100 text-blue-700'
+                  }`}>
+                    {pred.category.toUpperCase()}
                   </span>
+                  {!pred.resolved && (
+                    <span className="ml-auto text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full animate-pulse">
+                      ⏱️ {getTimeUntil(pred.resolvesAt)}
+                    </span>
+                  )}
+                  {pred.resolved && (
+                    <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${
+                      pred.outcome ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                    }`}>
+                      Result: {pred.outcome ? 'YES ✓' : 'NO ✗'}
+                    </span>
+                  )}
+                </div>
+                <h3 className="font-bold text-[#2d5a3d]">{pred.question}</h3>
+                
+                {/* Current Value Display */}
+                {pred.currentValue !== undefined && pred.targetValue !== undefined && (
+                  <div className="mt-2 flex items-center gap-3">
+                    <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
+                      <div 
+                        className={`h-full transition-all ${
+                          pred.currentValue >= pred.targetValue ? 'bg-green-500' : 'bg-orange-400'
+                        }`}
+                        style={{ 
+                          width: `${Math.min(100, (pred.currentValue / pred.targetValue) * 100)}%` 
+                        }}
+                      />
+                    </div>
+                    <span className="text-sm font-mono">
+                      <span className={pred.currentValue >= pred.targetValue ? 'text-green-600' : 'text-orange-500'}>
+                        {formatValue(pred.currentValue, pred.unit)}
+                      </span>
+                      <span className="text-gray-400"> / {formatValue(pred.targetValue, pred.unit)}</span>
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* AI Calls Side by Side */}
+              <div className="grid grid-cols-2 divide-x divide-gray-100">
+                {/* Opus */}
+                <div className="p-3 bg-[#fffcf5]">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-bold text-[#8a6830]">🧠 Opus</span>
+                    <div className="flex items-center gap-1">
+                      {getResultBadge(pred, 'opus')}
+                      <span className={`font-bold ${
+                        pred.opusCall.position === 'YES' ? 'text-green-600' : 'text-red-500'
+                      }`}>
+                        {pred.opusCall.position}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-500 mb-1">{pred.opusCall.confidence}% confident</div>
+                  <p className="text-xs text-gray-600 line-clamp-2">"{pred.opusCall.reasoning}"</p>
+                </div>
+
+                {/* Codex */}
+                <div className="p-3 bg-[#f5faff]">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-bold text-[#306088]">🤖 Codex</span>
+                    <div className="flex items-center gap-1">
+                      {getResultBadge(pred, 'codex')}
+                      <span className={`font-bold ${
+                        pred.codexCall.position === 'YES' ? 'text-green-600' : 'text-red-500'
+                      }`}>
+                        {pred.codexCall.position}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-500 mb-1">{pred.codexCall.confidence}% confident</div>
+                  <p className="text-xs text-gray-600 line-clamp-2">"{pred.codexCall.reasoning}"</p>
+                </div>
+              </div>
+
+              {/* Agreement Footer */}
+              <div className="px-3 py-2 bg-gray-50 text-center text-xs">
+                {pred.opusCall.position === pred.codexCall.position ? (
+                  <span className="text-green-600">🤝 Both say {pred.opusCall.position}</span>
                 ) : (
-                  <span className="text-sm text-orange-600 font-medium">
-                    ⚔️ AIs disagree! Opus: {market.opusCall.position} vs Codex: {market.codexCall.position}
-                  </span>
+                  <span className="text-orange-600">⚔️ Disagree!</span>
                 )}
               </div>
             </div>
           ))}
         </div>
 
-        {filteredMarkets.length === 0 && (
-          <div className="text-center py-12 text-gray-500">
-            No markets match your filters
+        {filteredPredictions.length === 0 && (
+          <div className="text-center py-12 bg-white rounded-2xl border-4 border-gray-200">
+            <div className="text-4xl mb-3">🔮</div>
+            <p className="text-gray-500">No predictions in this category</p>
           </div>
         )}
 
-        {/* Footer Info */}
+        {/* How It Works */}
         <div className="mt-8 bg-white rounded-2xl border-4 border-[#2d5a3d] p-6 shadow-lg">
-          <h3 className="font-bold text-lg text-[#2d5a3d] mb-4">📊 How It Works</h3>
-          <div className="grid md:grid-cols-3 gap-4 text-sm text-gray-600">
-            <div className="bg-[#f0f7f1] rounded-xl p-4">
-              <div className="text-2xl mb-2">1️⃣</div>
-              <p>We feed both AIs the same prediction market questions from Polymarket & Kalshi</p>
+          <h3 className="font-bold text-lg text-[#2d5a3d] mb-4">⚡ Daily Prediction Rules</h3>
+          <div className="grid md:grid-cols-4 gap-4 text-sm text-gray-600">
+            <div className="bg-[#f0f7f1] rounded-xl p-4 text-center">
+              <div className="text-2xl mb-2">🌅</div>
+              <p><strong>Morning:</strong> New predictions posted at 00:00 UTC</p>
             </div>
-            <div className="bg-[#f0f7f1] rounded-xl p-4">
-              <div className="text-2xl mb-2">2️⃣</div>
-              <p>Each AI gives their YES/NO call with confidence level and reasoning</p>
+            <div className="bg-[#f0f7f1] rounded-xl p-4 text-center">
+              <div className="text-2xl mb-2">📊</div>
+              <p><strong>Live:</strong> Values update every minute</p>
             </div>
-            <div className="bg-[#f0f7f1] rounded-xl p-4">
-              <div className="text-2xl mb-2">3️⃣</div>
-              <p>When markets resolve, we track which AI was right and update their stats</p>
+            <div className="bg-[#f0f7f1] rounded-xl p-4 text-center">
+              <div className="text-2xl mb-2">🌙</div>
+              <p><strong>Resolution:</strong> Markets close at 23:59 UTC</p>
+            </div>
+            <div className="bg-[#f0f7f1] rounded-xl p-4 text-center">
+              <div className="text-2xl mb-2">🏆</div>
+              <p><strong>Results:</strong> Winners announced instantly</p>
             </div>
           </div>
         </div>
