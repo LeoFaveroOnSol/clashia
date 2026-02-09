@@ -69,10 +69,17 @@ function getTimeAgo(date: string): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
+// Token contract (placeholder - replace with actual)
+const TOKEN_CONTRACT = 'CLASHxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
+const TOKEN_MCAP = 125000;
+const TOKEN_PRICE = 0.000125;
+
 export default function Home() {
   const [data, setData] = useState<BattleData | null>(null);
   const [loading, setLoading] = useState(true);
   const [countdown, setCountdown] = useState('--:--:--');
+  const [showTokenPanel, setShowTokenPanel] = useState(true);
+  const [showHowItWorks, setShowHowItWorks] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -109,9 +116,121 @@ export default function Home() {
   const opusWinRate = Number(stats?.opus?.winRate) || 0;
   const codexWinRate = Number(stats?.codex?.winRate) || 0;
 
+  const copyContract = () => {
+    navigator.clipboard.writeText(TOKEN_CONTRACT);
+  };
+
   return (
     <div className="min-h-screen bg-[#d4e8d1] pt-20">
-      <div className="max-w-5xl mx-auto p-4">
+      
+      {/* Floating Token Panel - Left */}
+      {showTokenPanel && (
+        <div className="fixed left-4 top-24 w-64 bg-white rounded-xl border-4 border-[#2d5a3d] shadow-lg z-40">
+          <div className="bg-[#2d5a3d] px-4 py-2 flex items-center justify-between">
+            <span className="text-white font-bold text-sm">$CLASH Token</span>
+            <button 
+              onClick={() => setShowTokenPanel(false)}
+              className="text-[#a8d4b0] hover:text-white text-lg leading-none"
+            >
+              ×
+            </button>
+          </div>
+          <div className="p-4">
+            <div className="mb-4">
+              <div className="text-xs text-gray-500 mb-1">Contract</div>
+              <div 
+                onClick={copyContract}
+                className="bg-[#f0f7f1] rounded-lg p-2 text-xs font-mono text-[#2d5a3d] cursor-pointer hover:bg-[#e0efe0] transition break-all"
+                title="Click to copy"
+              >
+                {TOKEN_CONTRACT.slice(0, 20)}...
+              </div>
+              <div className="text-xs text-gray-400 mt-1">Click to copy</div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-[#f0f7f1] rounded-lg p-2 text-center">
+                <div className="text-xs text-gray-500">Price</div>
+                <div className="font-bold text-[#2d5a3d]">${TOKEN_PRICE}</div>
+              </div>
+              <div className="bg-[#f0f7f1] rounded-lg p-2 text-center">
+                <div className="text-xs text-gray-500">MCap</div>
+                <div className="font-bold text-[#2d5a3d]">${(TOKEN_MCAP / 1000).toFixed(0)}K</div>
+              </div>
+            </div>
+
+            <a 
+              href={`https://pump.fun/${TOKEN_CONTRACT}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block mt-4 bg-[#2d5a3d] text-white text-center py-2 rounded-lg text-sm font-medium hover:bg-[#4a8f5c] transition"
+            >
+              Buy on pump.fun
+            </a>
+          </div>
+        </div>
+      )}
+
+      {/* Floating How It Works Panel - Right */}
+      {showHowItWorks && (
+        <div className="fixed right-4 top-24 w-72 bg-white rounded-xl border-4 border-[#2d5a3d] shadow-lg z-40">
+          <div className="bg-[#2d5a3d] px-4 py-2 flex items-center justify-between">
+            <span className="text-white font-bold text-sm">How It Works</span>
+            <button 
+              onClick={() => setShowHowItWorks(false)}
+              className="text-[#a8d4b0] hover:text-white text-lg leading-none"
+            >
+              ×
+            </button>
+          </div>
+          <div className="p-4 text-sm">
+            <p className="text-gray-600 mb-4">
+              $CLASH tokenomics are tied directly to AI battle outcomes. The winning model determines what happens next.
+            </p>
+
+            <div className="bg-[#fffcf5] border-2 border-[#f0b866] rounded-lg p-3 mb-3">
+              <div className="font-bold text-[#8a6830] mb-1">Claude Wins</div>
+              <p className="text-xs text-gray-600">
+                Creator fees trigger an automatic <span className="font-medium text-[#8a6830]">buyback and burn</span>. Tokens are purchased from the market and permanently removed from supply.
+              </p>
+            </div>
+
+            <div className="bg-[#f5faff] border-2 border-[#66b8f0] rounded-lg p-3 mb-3">
+              <div className="font-bold text-[#306088] mb-1">OpenAI Wins</div>
+              <p className="text-xs text-gray-600">
+                Creator fees fund an <span className="font-medium text-[#306088]">airdrop to holders</span>. Rewards distributed proportionally based on wallet balance at snapshot.
+              </p>
+            </div>
+
+            <div className="bg-[#f0f7f1] rounded-lg p-3">
+              <div className="font-bold text-[#2d5a3d] mb-1">Tech Stack</div>
+              <p className="text-xs text-gray-600">
+                Battles run via API: pump.fun for token data, Birdeye for prices, Anthropic and OpenAI for AI calls. Results verified on-chain.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toggle buttons when panels are closed */}
+      {!showTokenPanel && (
+        <button
+          onClick={() => setShowTokenPanel(true)}
+          className="fixed left-4 top-24 bg-[#2d5a3d] text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-[#4a8f5c] transition z-40"
+        >
+          $CLASH
+        </button>
+      )}
+      {!showHowItWorks && (
+        <button
+          onClick={() => setShowHowItWorks(true)}
+          className="fixed right-4 top-24 bg-[#2d5a3d] text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-[#4a8f5c] transition z-40"
+        >
+          How It Works
+        </button>
+      )}
+
+      <div className="max-w-3xl mx-auto p-4">
         
         {/* Header Card */}
         <div className="bg-[#2d5a3d] rounded-2xl p-6 mb-6 border-4 border-[#1a3d28]">
@@ -154,6 +273,7 @@ export default function Home() {
                 {loading ? '-' : opusWins}
               </div>
               <div className="text-gray-600 text-sm">Opus</div>
+              <div className="text-xs text-gray-400">buyback & burn</div>
             </div>
             <div className="text-gray-400 text-2xl">vs</div>
             <div className="text-center">
@@ -161,6 +281,7 @@ export default function Home() {
                 {loading ? '-' : codexWins}
               </div>
               <div className="text-gray-600 text-sm">Codex</div>
+              <div className="text-xs text-gray-400">holder airdrop</div>
             </div>
           </div>
         </div>
@@ -244,7 +365,7 @@ export default function Home() {
 
         {/* Recent Rounds */}
         {recent.length > 0 && (
-          <div className="bg-white rounded-2xl border-4 border-[#2d5a3d] p-6 mb-6">
+          <div className="bg-white rounded-2xl border-4 border-[#2d5a3d] p-6">
             <h2 className="font-bold text-[#2d5a3d] mb-4">Recent Rounds</h2>
             <div className="space-y-2">
               {recent.map((b) => (
@@ -268,50 +389,6 @@ export default function Home() {
             </div>
           </div>
         )}
-
-        {/* How It Works */}
-        <div className="bg-white rounded-2xl border-4 border-[#2d5a3d] p-6">
-          <h2 className="font-bold text-[#2d5a3d] mb-4">How It Works</h2>
-          
-          <div className="grid md:grid-cols-3 gap-4 mb-6">
-            <div className="bg-[#f0f7f1] rounded-xl p-4">
-              <div className="text-[#2d5a3d] font-bold mb-2">1. Data Collection</div>
-              <p className="text-gray-600 text-sm">
-                Every round, our system fetches trending tokens from pump.fun via API. We collect market cap, volume, holder count, and social metrics.
-              </p>
-            </div>
-            <div className="bg-[#f0f7f1] rounded-xl p-4">
-              <div className="text-[#2d5a3d] font-bold mb-2">2. AI Analysis</div>
-              <p className="text-gray-600 text-sm">
-                Both Claude Opus and OpenAI Codex receive the same data through their APIs. Each model analyzes and picks one token with reasoning.
-              </p>
-            </div>
-            <div className="bg-[#f0f7f1] rounded-xl p-4">
-              <div className="text-[#2d5a3d] font-bold mb-2">3. Resolution</div>
-              <p className="text-gray-600 text-sm">
-                After the timer ends, we fetch final market caps via Birdeye API. The model with better percentage gain wins the round.
-              </p>
-            </div>
-          </div>
-
-          <div className="bg-[#2d5a3d] rounded-xl p-4 text-white">
-            <div className="font-bold mb-2">Technical Stack</div>
-            <div className="grid md:grid-cols-2 gap-4 text-sm text-[#a8d4b0]">
-              <div>
-                <span className="text-white">Data Sources:</span> pump.fun API, Birdeye API, CoinGecko
-              </div>
-              <div>
-                <span className="text-white">AI Models:</span> Anthropic Claude Opus, OpenAI Codex
-              </div>
-              <div>
-                <span className="text-white">Backend:</span> Next.js API routes, Supabase
-              </div>
-              <div>
-                <span className="text-white">Updates:</span> Real-time via polling, 30s intervals
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
