@@ -35,38 +35,24 @@ interface CoinPick {
   entryMcap: number;
   currentMcap: number;
   multiplier: number;
-  reasoning: string;
 }
 
 const mockOpusPicks: CoinPick[] = [
-  { token: 'PEPE2', contract: '7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr', entryMcap: 45000, currentMcap: 52000, multiplier: 1.15, reasoning: 'Strong community momentum' },
-  { token: 'WOJAK', contract: '5z3EqYQo9HiCEs3R84RCDMu2n7anpDMxRhdK8PSWmrRC', entryMcap: 28000, currentMcap: 31000, multiplier: 1.11, reasoning: 'Meme narrative on CT' },
-  { token: 'BONK2', contract: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263', entryMcap: 120000, currentMcap: 115000, multiplier: 0.96, reasoning: 'BONK follow-up play' },
+  { token: 'PEPE2', contract: '7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr', entryMcap: 45000, currentMcap: 52000, multiplier: 1.15 },
+  { token: 'WOJAK', contract: '5z3EqYQo9HiCEs3R84RCDMu2n7anpDMxRhdK8PSWmrRC', entryMcap: 28000, currentMcap: 31000, multiplier: 1.11 },
+  { token: 'BONK2', contract: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263', entryMcap: 120000, currentMcap: 115000, multiplier: 0.96 },
 ];
 
 const mockCodexPicks: CoinPick[] = [
-  { token: 'GROK', contract: '8wXtPeU6557ETkp9WHFY1n1EcU6NxDvbAggHGsMYiHsB', entryMcap: 85000, currentMcap: 98000, multiplier: 1.15, reasoning: 'AI narrative + Elon' },
-  { token: 'MOCHI', contract: '45EgCwcPXYagBC7KqBin4nCFgEZWN7f3Y6nACwxqMCWX', entryMcap: 15000, currentMcap: 19000, multiplier: 1.27, reasoning: 'Cat meta performing' },
-  { token: 'SAMO', contract: '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU', entryMcap: 95000, currentMcap: 89000, multiplier: 0.94, reasoning: 'Dog coin strength' },
+  { token: 'GROK', contract: '8wXtPeU6557ETkp9WHFY1n1EcU6NxDvbAggHGsMYiHsB', entryMcap: 85000, currentMcap: 98000, multiplier: 1.15 },
+  { token: 'MOCHI', contract: '45EgCwcPXYagBC7KqBin4nCFgEZWN7f3Y6nACwxqMCWX', entryMcap: 15000, currentMcap: 19000, multiplier: 1.27 },
+  { token: 'SAMO', contract: '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU', entryMcap: 95000, currentMcap: 89000, multiplier: 0.94 },
 ];
 
 function formatMcap(mcap: number): string {
   if (mcap >= 1000000) return `$${(mcap / 1000000).toFixed(2)}M`;
   if (mcap >= 1000) return `$${(mcap / 1000).toFixed(1)}K`;
   return `$${mcap.toFixed(0)}`;
-}
-
-function formatMultiplier(mult: number): string {
-  return `${mult.toFixed(2)}x`;
-}
-
-function getTimeRemaining(endsAt: string): string {
-  const diff = new Date(endsAt).getTime() - Date.now();
-  if (diff <= 0) return '00:00:00';
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-  const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  const secs = Math.floor((diff % (1000 * 60)) / 1000);
-  return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
 function shortenContract(contract: string): string {
@@ -137,25 +123,126 @@ export default function Home() {
         </div>
       )}
 
-      {/* Floating How It Works */}
+      {/* Floating How It Works - Expanded */}
       {showHowItWorks && (
-        <div className="fixed right-4 top-24 w-72 bg-white rounded-xl border-4 border-[#2d5a3d] shadow-lg z-40">
-          <div className="bg-[#2d5a3d] px-4 py-2 flex items-center justify-between">
+        <div className="fixed right-4 top-24 w-80 bg-white rounded-xl border-4 border-[#2d5a3d] shadow-lg z-40 max-h-[calc(100vh-120px)] overflow-y-auto">
+          <div className="bg-[#2d5a3d] px-4 py-2 flex items-center justify-between sticky top-0">
             <span className="text-white font-bold text-sm">How It Works</span>
             <button onClick={() => setShowHowItWorks(false)} className="text-[#a8d4b0] hover:text-white text-lg leading-none">×</button>
           </div>
-          <div className="p-4 text-sm">
-            <div className="bg-[#fffcf5] border-2 border-[#f0b866] rounded-lg p-3 mb-3">
-              <div className="font-bold text-[#8a6830] mb-1">Claude Wins</div>
-              <p className="text-xs text-gray-600">Buyback and burn from creator fees</p>
+          <div className="p-4">
+            {/* The Models */}
+            <div className="mb-4">
+              <div className="text-xs text-gray-500 uppercase tracking-wide mb-3">The Competitors</div>
+              <div className="grid grid-cols-2 gap-3">
+                {/* Opus */}
+                <div className="bg-[#fffcf5] border-2 border-[#f0b866] rounded-xl p-3 text-center">
+                  <div className="w-12 h-12 mx-auto mb-2 bg-gradient-to-br from-[#f0b866] to-[#d4943d] rounded-xl flex items-center justify-center">
+                    <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                  </div>
+                  <div className="font-bold text-[#8a6830]">Claude</div>
+                  <div className="text-xs text-[#8a6830]">Opus 4.6</div>
+                  <div className="text-xs text-gray-500 mt-1">Anthropic</div>
+                </div>
+                {/* Codex */}
+                <div className="bg-[#f5faff] border-2 border-[#66b8f0] rounded-xl p-3 text-center">
+                  <div className="w-12 h-12 mx-auto mb-2 bg-gradient-to-br from-[#66b8f0] to-[#4a90c2] rounded-xl flex items-center justify-center">
+                    <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/>
+                    </svg>
+                  </div>
+                  <div className="font-bold text-[#306088]">GPT</div>
+                  <div className="text-xs text-[#306088]">Codex 5.3</div>
+                  <div className="text-xs text-gray-500 mt-1">OpenAI</div>
+                </div>
+              </div>
             </div>
-            <div className="bg-[#f5faff] border-2 border-[#66b8f0] rounded-lg p-3 mb-3">
-              <div className="font-bold text-[#306088] mb-1">OpenAI Wins</div>
-              <p className="text-xs text-gray-600">Airdrop to holders from creator fees</p>
+
+            {/* Battle Flow */}
+            <div className="mb-4">
+              <div className="text-xs text-gray-500 uppercase tracking-wide mb-3">Battle Flow</div>
+              <div className="space-y-2 text-sm">
+                <div className="flex gap-3 items-start">
+                  <div className="w-6 h-6 rounded-full bg-[#2d5a3d] text-white text-xs flex items-center justify-center flex-shrink-0">1</div>
+                  <div className="text-gray-600">System fetches trending tokens from pump.fun via API</div>
+                </div>
+                <div className="flex gap-3 items-start">
+                  <div className="w-6 h-6 rounded-full bg-[#2d5a3d] text-white text-xs flex items-center justify-center flex-shrink-0">2</div>
+                  <div className="text-gray-600">Both AIs analyze data and pick their tokens</div>
+                </div>
+                <div className="flex gap-3 items-start">
+                  <div className="w-6 h-6 rounded-full bg-[#2d5a3d] text-white text-xs flex items-center justify-center flex-shrink-0">3</div>
+                  <div className="text-gray-600">Round timer counts down while prices update</div>
+                </div>
+                <div className="flex gap-3 items-start">
+                  <div className="w-6 h-6 rounded-full bg-[#2d5a3d] text-white text-xs flex items-center justify-center flex-shrink-0">4</div>
+                  <div className="text-gray-600">Winner determined by best % gain at close</div>
+                </div>
+              </div>
             </div>
-            <div className="bg-[#f0f7f1] rounded-lg p-3">
-              <div className="font-bold text-[#2d5a3d] mb-1">Tech</div>
-              <p className="text-xs text-gray-600">pump.fun, Birdeye, Anthropic & OpenAI APIs</p>
+
+            {/* Tokenomics */}
+            <div className="mb-4">
+              <div className="text-xs text-gray-500 uppercase tracking-wide mb-3">$CLASH Tokenomics</div>
+              
+              <div className="bg-[#fffcf5] border-2 border-[#f0b866] rounded-lg p-3 mb-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 bg-[#f0b866] rounded-lg flex items-center justify-center">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                  </div>
+                  <div className="font-bold text-[#8a6830]">Claude Wins</div>
+                </div>
+                <p className="text-xs text-gray-600">
+                  Creator fees from pump.fun are used to <span className="font-semibold text-[#8a6830]">buyback $CLASH</span> from the market. 
+                  Purchased tokens are <span className="font-semibold text-[#8a6830]">permanently burned</span>, reducing total supply.
+                </p>
+              </div>
+
+              <div className="bg-[#f5faff] border-2 border-[#66b8f0] rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 bg-[#66b8f0] rounded-lg flex items-center justify-center">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="font-bold text-[#306088]">OpenAI Wins</div>
+                </div>
+                <p className="text-xs text-gray-600">
+                  Creator fees fund an <span className="font-semibold text-[#306088]">airdrop to $CLASH holders</span>. 
+                  Rewards distributed proportionally based on wallet balance at round end snapshot.
+                </p>
+              </div>
+            </div>
+
+            {/* Tech Stack */}
+            <div>
+              <div className="text-xs text-gray-500 uppercase tracking-wide mb-3">Tech Stack</div>
+              <div className="bg-[#f0f7f1] rounded-lg p-3 space-y-2 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Token Data</span>
+                  <span className="text-[#2d5a3d] font-medium">pump.fun API</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Price Feeds</span>
+                  <span className="text-[#2d5a3d] font-medium">Birdeye API</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Claude Model</span>
+                  <span className="text-[#2d5a3d] font-medium">Anthropic API</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">GPT Model</span>
+                  <span className="text-[#2d5a3d] font-medium">OpenAI API</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Verification</span>
+                  <span className="text-[#2d5a3d] font-medium">On-chain</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -201,7 +288,7 @@ export default function Home() {
         <button onClick={() => setShowTokenPanel(true)} className="fixed left-4 top-24 bg-[#2d5a3d] text-white px-3 py-2 rounded-lg text-sm font-medium z-40">$CLASH</button>
       )}
       {!showHowItWorks && (
-        <button onClick={() => setShowHowItWorks(true)} className="fixed right-4 top-24 bg-[#2d5a3d] text-white px-3 py-2 rounded-lg text-sm font-medium z-40">Info</button>
+        <button onClick={() => setShowHowItWorks(true)} className="fixed right-4 top-24 bg-[#2d5a3d] text-white px-3 py-2 rounded-lg text-sm font-medium z-40">How It Works</button>
       )}
 
       <div className="max-w-4xl mx-auto p-4">
@@ -226,48 +313,36 @@ export default function Home() {
 
         {/* Performance Tabs */}
         <div className="bg-white rounded-2xl border-4 border-[#2d5a3d] overflow-hidden mb-6">
-          {/* Tab Headers */}
           <div className="flex border-b-4 border-[#2d5a3d]">
             <button
               onClick={() => setActiveTab('opus')}
               className={`flex-1 py-4 text-center font-bold transition ${
-                activeTab === 'opus' 
-                  ? 'bg-[#fffcf5] text-[#8a6830]' 
-                  : 'bg-gray-100 text-gray-500 hover:bg-gray-50'
+                activeTab === 'opus' ? 'bg-[#fffcf5] text-[#8a6830]' : 'bg-gray-100 text-gray-500'
               }`}
             >
-              Opus Performance
+              Opus 4.6 Performance
             </button>
             <button
               onClick={() => setActiveTab('codex')}
               className={`flex-1 py-4 text-center font-bold transition ${
-                activeTab === 'codex' 
-                  ? 'bg-[#f5faff] text-[#306088]' 
-                  : 'bg-gray-100 text-gray-500 hover:bg-gray-50'
+                activeTab === 'codex' ? 'bg-[#f5faff] text-[#306088]' : 'bg-gray-100 text-gray-500'
               }`}
             >
-              Codex Performance
+              Codex 5.3 Performance
             </button>
           </div>
 
-          {/* Stats Row */}
           <div className={`grid grid-cols-4 gap-4 p-4 ${activeTab === 'opus' ? 'bg-[#fffcf5]' : 'bg-[#f5faff]'}`}>
             <div className="text-center">
-              <div className="text-2xl font-bold text-[#2d5a3d]">
-                {activeTab === 'opus' ? opusStats.total : codexStats.total}
-              </div>
+              <div className="text-2xl font-bold text-[#2d5a3d]">{activeTab === 'opus' ? opusStats.total : codexStats.total}</div>
               <div className="text-xs text-gray-500">Calls</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-[#2d5a3d]">
-                {activeTab === 'opus' ? opusStats.median.toFixed(2) : codexStats.median.toFixed(2)}x
-              </div>
+              <div className="text-2xl font-bold text-[#2d5a3d]">{activeTab === 'opus' ? opusStats.median.toFixed(2) : codexStats.median.toFixed(2)}x</div>
               <div className="text-xs text-gray-500">Median</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-[#2d5a3d]">
-                {activeTab === 'opus' ? opusStats.avg.toFixed(2) : codexStats.avg.toFixed(2)}x
-              </div>
+              <div className="text-2xl font-bold text-[#2d5a3d]">{activeTab === 'opus' ? opusStats.avg.toFixed(2) : codexStats.avg.toFixed(2)}x</div>
               <div className="text-xs text-gray-500">Average</div>
             </div>
             <div className="text-center">
@@ -278,7 +353,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Token List */}
           <div className="divide-y divide-gray-100">
             <div className="grid grid-cols-12 px-4 py-2 bg-gray-50 text-xs text-gray-500 font-medium">
               <div className="col-span-1">#</div>
@@ -298,7 +372,7 @@ export default function Home() {
         </div>
 
         {/* Current Round */}
-        <div className="bg-white rounded-2xl border-4 border-[#2d5a3d] p-6 mb-6">
+        <div className="bg-white rounded-2xl border-4 border-[#2d5a3d] p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-[#2d5a3d]">Current Round #42</h2>
             <div className="flex items-center gap-2">
@@ -308,12 +382,11 @@ export default function Home() {
           </div>
 
           <div className="grid md:grid-cols-2 gap-6">
-            {/* Opus Picks */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <span className="font-bold text-[#8a6830]">Opus Portfolio</span>
+                <span className="font-bold text-[#8a6830]">Opus 4.6</span>
                 <span className={`text-sm font-medium ${opusTotal >= 1 ? 'text-green-600' : 'text-red-500'}`}>
-                  Avg: {opusTotal.toFixed(2)}x
+                  {opusTotal.toFixed(2)}x avg
                 </span>
               </div>
               <div className="space-y-2">
@@ -337,12 +410,11 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Codex Picks */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <span className="font-bold text-[#306088]">Codex Portfolio</span>
+                <span className="font-bold text-[#306088]">Codex 5.3</span>
                 <span className={`text-sm font-medium ${codexTotal >= 1 ? 'text-green-600' : 'text-red-500'}`}>
-                  Avg: {codexTotal.toFixed(2)}x
+                  {codexTotal.toFixed(2)}x avg
                 </span>
               </div>
               <div className="space-y-2">
