@@ -75,8 +75,8 @@ export default function Home() {
   const [data, setData] = useState<BattleData | null>(null);
   const [loading, setLoading] = useState(true);
   const [countdown, setCountdown] = useState('--:--:--');
+  const [activeTab, setActiveTab] = useState<'arena' | 'history' | 'about'>('arena');
 
-  // Fetch data
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -91,11 +91,10 @@ export default function Home() {
     };
 
     fetchData();
-    const interval = setInterval(fetchData, 30000); // Refresh every 30s
+    const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  // Countdown timer
   useEffect(() => {
     if (!data?.currentBattle?.endsAt) return;
     
@@ -112,192 +111,334 @@ export default function Home() {
   const battle = data?.currentBattle;
   const recent = data?.recentBattles || [];
 
+  const opusWins = stats?.opus?.wins ?? 0;
+  const codexWins = stats?.codex?.wins ?? 0;
+  const opusWinRate = Number(stats?.opus?.winRate) || 0;
+  const codexWinRate = Number(stats?.codex?.winRate) || 0;
+  const bestMultiplier = Math.max(Number(stats?.opus?.bestMultiplier) || 1, Number(stats?.codex?.bestMultiplier) || 1);
+
   return (
-    <div className="min-h-screen">
-      {/* Hero Section */}
-      <section className="relative py-20 px-4">
-        <div className="max-w-6xl mx-auto text-center">
-          <h1 className="text-5xl md:text-7xl font-bold mb-6">
-            <span className="text-opus">OPUS</span>
-            <span className="text-clash mx-4">⚔️</span>
-            <span className="text-codex">CODEX</span>
-          </h1>
-          <p className="text-xl text-gray-400 mb-8">
-            Two AIs. One arena. Who makes the best memecoin calls?
-          </p>
-          
-          {/* Live Score */}
-          <div className="flex justify-center gap-8 mb-12">
-            <div className="bg-opus/20 border border-opus/50 rounded-2xl p-8 min-w-[200px]">
-              <div className="text-4xl font-bold text-opus mb-2">
-                {loading ? '...' : stats?.opus.wins || 0}
-              </div>
-              <div className="text-gray-400">Opus Wins</div>
+    <div className="min-h-screen bg-[#d4e8d1] text-gray-900">
+      {/* Main Container */}
+      <div className="max-w-5xl mx-auto p-4 pt-24">
+        
+        {/* Header Card */}
+        <div className="bg-[#2d5a3d] rounded-2xl p-6 mb-6 shadow-lg border-4 border-[#1a3d28]">
+          <div className="flex items-start gap-6">
+            {/* Logo */}
+            <div className="w-20 h-20 bg-[#1a3d28] rounded-xl flex items-center justify-center text-4xl border-2 border-[#4a8f5c]">
+              ⚔️
             </div>
-            <div className="flex items-center text-4xl text-gray-600">VS</div>
-            <div className="bg-codex/20 border border-codex/50 rounded-2xl p-8 min-w-[200px]">
-              <div className="text-4xl font-bold text-codex mb-2">
-                {loading ? '...' : stats?.codex.wins || 0}
+            
+            {/* Info */}
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <h1 className="text-2xl font-bold text-white">ClashAI</h1>
+                <span className="text-[#4a8f5c]">⚡</span>
               </div>
-              <div className="text-gray-400">Codex Wins</div>
+              <p className="text-[#a8d4b0] text-sm mb-3">
+                AI vs AI memecoin prediction battles
+              </p>
+              <div className="inline-block bg-[#4a8f5c] text-white text-xs px-3 py-1 rounded-full">
+                🔴 LIVE • pump.fun arena
+              </div>
             </div>
+
+            {/* Close button style */}
+            <button className="w-8 h-8 bg-[#1a3d28] rounded-lg text-[#4a8f5c] hover:bg-[#4a8f5c] hover:text-white transition flex items-center justify-center">
+              ✕
+            </button>
           </div>
 
-          {/* Current Battle */}
-          <div className="bg-gray-900/50 border border-gray-800 rounded-3xl p-8 max-w-4xl mx-auto">
-            {battle ? (
-              <>
-                <div className="flex items-center justify-center gap-2 mb-6">
-                  <span className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></span>
-                  <span className="text-red-400 font-semibold">LIVE BATTLE #{battle.roundId}</span>
-                </div>
-                
-                <div className="grid md:grid-cols-2 gap-8">
-                  {/* Opus Call */}
-                  {battle.opus && (
-                    <div className="bg-opus/10 border border-opus/30 rounded-xl p-6 text-left">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 bg-opus rounded-full flex items-center justify-center">🧠</div>
-                        <div>
-                          <div className="font-bold text-opus">Claude Opus</div>
-                          <div className="text-xs text-gray-500">Called {getTimeAgo(battle.opus.calledAt)}</div>
+          {/* Stats Row */}
+          <div className="grid grid-cols-4 gap-3 mt-6">
+            <div className="bg-[#1a3d28] rounded-lg p-3 text-center border border-[#4a8f5c]">
+              <div className="text-[#a8d4b0] text-xs mb-1">Rounds</div>
+              <div className="text-white font-bold">{opusWins + codexWins}</div>
+            </div>
+            <div className="bg-[#1a3d28] rounded-lg p-3 text-center border border-[#4a8f5c]">
+              <div className="text-[#a8d4b0] text-xs mb-1">Opus W/R</div>
+              <div className="text-[#f0b866] font-bold">{opusWinRate.toFixed(1)}%</div>
+            </div>
+            <div className="bg-[#1a3d28] rounded-lg p-3 text-center border border-[#4a8f5c]">
+              <div className="text-[#a8d4b0] text-xs mb-1">Codex W/R</div>
+              <div className="text-[#66d4f0] font-bold">{codexWinRate.toFixed(1)}%</div>
+            </div>
+            <div className="bg-[#1a3d28] rounded-lg p-3 text-center border border-[#4a8f5c]">
+              <div className="text-[#a8d4b0] text-xs mb-1">Best Call</div>
+              <div className="text-[#66f084] font-bold">+{((bestMultiplier - 1) * 100).toFixed(0)}%</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={() => setActiveTab('arena')}
+            className={`px-5 py-2 rounded-xl font-medium transition flex items-center gap-2 ${
+              activeTab === 'arena'
+                ? 'bg-[#2d5a3d] text-white border-2 border-[#4a8f5c]'
+                : 'bg-white text-gray-600 border-2 border-gray-200 hover:border-[#4a8f5c]'
+            }`}
+          >
+            ⚔️ Arena
+          </button>
+          <button
+            onClick={() => setActiveTab('history')}
+            className={`px-5 py-2 rounded-xl font-medium transition flex items-center gap-2 ${
+              activeTab === 'history'
+                ? 'bg-[#2d5a3d] text-white border-2 border-[#4a8f5c]'
+                : 'bg-white text-gray-600 border-2 border-gray-200 hover:border-[#4a8f5c]'
+            }`}
+          >
+            📜 History
+          </button>
+          <button
+            onClick={() => setActiveTab('about')}
+            className={`px-5 py-2 rounded-xl font-medium transition flex items-center gap-2 ${
+              activeTab === 'about'
+                ? 'bg-[#2d5a3d] text-white border-2 border-[#4a8f5c]'
+                : 'bg-white text-gray-600 border-2 border-gray-200 hover:border-[#4a8f5c]'
+            }`}
+          >
+            ℹ️ About
+          </button>
+        </div>
+
+        {/* Content Area */}
+        <div className="bg-white rounded-2xl border-4 border-[#2d5a3d] shadow-lg overflow-hidden">
+          
+          {/* Arena Tab */}
+          {activeTab === 'arena' && (
+            <div className="p-6">
+              <div className="flex items-center gap-2 mb-6">
+                <span className="text-xl">🏟️</span>
+                <h2 className="font-bold text-lg">Live Battle Arena</h2>
+                {battle && (
+                  <span className="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full animate-pulse">
+                    ROUND #{battle.roundId}
+                  </span>
+                )}
+              </div>
+
+              {loading ? (
+                <div className="text-center py-12 text-gray-500">Loading battles...</div>
+              ) : battle ? (
+                <>
+                  {/* Countdown */}
+                  <div className="text-center mb-6 p-4 bg-[#f0f7f1] rounded-xl border-2 border-[#d4e8d1]">
+                    <div className="text-sm text-gray-500 mb-1">Round ends in</div>
+                    <div className="text-3xl font-mono font-bold text-[#2d5a3d]">{countdown}</div>
+                  </div>
+
+                  {/* Battle Cards */}
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {/* Opus Card */}
+                    {battle.opus && (
+                      <div className="bg-gradient-to-br from-[#fff8e8] to-[#fff0d0] rounded-xl border-3 border-[#f0b866] p-5 shadow-md hover:shadow-lg transition">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-12 h-12 bg-[#f0b866] rounded-xl flex items-center justify-center text-2xl shadow-inner">
+                            🧠
+                          </div>
+                          <div>
+                            <div className="font-bold text-[#8a6830]">Claude Opus</div>
+                            <div className="text-xs text-[#b89860]">{getTimeAgo(battle.opus.calledAt)}</div>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-white/60 rounded-lg p-3 mb-3">
+                          <div className="font-mono font-bold text-lg text-[#2d5a3d]">${battle.opus.token}</div>
+                          <div className="text-xs text-gray-500 mt-1 line-clamp-2">"{battle.opus.reasoning}"</div>
+                        </div>
+
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Entry:</span>
+                            <span className="font-medium">{formatMcap(battle.opus.entryMcap)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Current:</span>
+                            <span className={`font-bold ${battle.opus.multiplier >= 1 ? 'text-green-600' : 'text-red-500'}`}>
+                              {formatMcap(battle.opus.currentMcap)}
+                            </span>
+                          </div>
+                          <div className="pt-2 border-t border-[#f0b866]/30">
+                            <div className={`text-center text-xl font-bold ${battle.opus.multiplier >= 1 ? 'text-green-600' : 'text-red-500'}`}>
+                              {formatMultiplier(battle.opus.multiplier)}
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      <div className="text-lg font-mono mb-2">${battle.opus.token}</div>
-                      <div className="text-sm text-gray-400 mb-4">"{battle.opus.reasoning}"</div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Entry MCap:</span>
-                        <span>{formatMcap(battle.opus.entryMcap)}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Current:</span>
-                        <span className={battle.opus.multiplier >= 1 ? 'text-green-400' : 'text-red-400'}>
-                          {formatMcap(battle.opus.currentMcap)} ({formatMultiplier(battle.opus.multiplier)})
-                        </span>
-                      </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Codex Call */}
-                  {battle.codex && (
-                    <div className="bg-codex/10 border border-codex/30 rounded-xl p-6 text-left">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 bg-codex rounded-full flex items-center justify-center">🤖</div>
-                        <div>
-                          <div className="font-bold text-codex">OpenAI Codex</div>
-                          <div className="text-xs text-gray-500">Called {getTimeAgo(battle.codex.calledAt)}</div>
+                    {/* Codex Card */}
+                    {battle.codex && (
+                      <div className="bg-gradient-to-br from-[#e8f4ff] to-[#d0e8ff] rounded-xl border-3 border-[#66b8f0] p-5 shadow-md hover:shadow-lg transition">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-12 h-12 bg-[#66b8f0] rounded-xl flex items-center justify-center text-2xl shadow-inner">
+                            🤖
+                          </div>
+                          <div>
+                            <div className="font-bold text-[#306088]">OpenAI Codex</div>
+                            <div className="text-xs text-[#6098b8]">{getTimeAgo(battle.codex.calledAt)}</div>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-white/60 rounded-lg p-3 mb-3">
+                          <div className="font-mono font-bold text-lg text-[#2d5a3d]">${battle.codex.token}</div>
+                          <div className="text-xs text-gray-500 mt-1 line-clamp-2">"{battle.codex.reasoning}"</div>
+                        </div>
+
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Entry:</span>
+                            <span className="font-medium">{formatMcap(battle.codex.entryMcap)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Current:</span>
+                            <span className={`font-bold ${battle.codex.multiplier >= 1 ? 'text-green-600' : 'text-red-500'}`}>
+                              {formatMcap(battle.codex.currentMcap)}
+                            </span>
+                          </div>
+                          <div className="pt-2 border-t border-[#66b8f0]/30">
+                            <div className={`text-center text-xl font-bold ${battle.codex.multiplier >= 1 ? 'text-green-600' : 'text-red-500'}`}>
+                              {formatMultiplier(battle.codex.multiplier)}
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      <div className="text-lg font-mono mb-2">${battle.codex.token}</div>
-                      <div className="text-sm text-gray-400 mb-4">"{battle.codex.reasoning}"</div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Entry MCap:</span>
-                        <span>{formatMcap(battle.codex.entryMcap)}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Current:</span>
-                        <span className={battle.codex.multiplier >= 1 ? 'text-green-400' : 'text-red-400'}>
-                          {formatMcap(battle.codex.currentMcap)} ({formatMultiplier(battle.codex.multiplier)})
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
 
-                <div className="mt-8 pt-6 border-t border-gray-800">
-                  <div className="text-sm text-gray-500 mb-2">Round ends in</div>
-                  <div className="text-3xl font-mono text-clash">{countdown}</div>
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-8">
-                <div className="text-gray-500 mb-4">
-                  {loading ? 'Loading...' : 'No active battle'}
-                </div>
-                {!loading && (
+                  {/* VS Badge */}
+                  <div className="flex justify-center -mt-4 relative z-10">
+                    <div className="bg-[#2d5a3d] text-white px-4 py-2 rounded-full font-bold text-sm border-4 border-white shadow-lg">
+                      ⚔️ VS
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-12">
+                  <div className="text-6xl mb-4">🏟️</div>
+                  <div className="text-gray-500 mb-4">No active battle</div>
                   <button 
                     onClick={async () => {
                       await fetch('/api/cron?action=start');
                       window.location.reload();
                     }}
-                    className="bg-clash text-black px-6 py-2 rounded-lg font-semibold hover:bg-yellow-400 transition"
+                    className="bg-[#2d5a3d] text-white px-6 py-3 rounded-xl font-semibold hover:bg-[#4a8f5c] transition"
                   >
-                    Start New Battle
+                    🚀 Start New Battle
                   </button>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* Stats Section */}
-      <section className="py-16 px-4 border-t border-gray-800">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-2xl font-bold mb-8 text-center">Battle Stats</h2>
-          <div className="grid md:grid-cols-4 gap-6">
-            <div className="bg-gray-900/50 rounded-xl p-6 text-center">
-              <div className="text-3xl font-bold text-clash mb-2">
-                {(stats?.opus.wins || 0) + (stats?.codex.wins || 0)}
-              </div>
-              <div className="text-gray-400">Total Rounds</div>
-            </div>
-            <div className="bg-gray-900/50 rounded-xl p-6 text-center">
-              <div className="text-3xl font-bold text-opus mb-2">
-                {stats?.opus.winRate.toFixed(1) || 0}%
-              </div>
-              <div className="text-gray-400">Opus Win Rate</div>
-            </div>
-            <div className="bg-gray-900/50 rounded-xl p-6 text-center">
-              <div className="text-3xl font-bold text-codex mb-2">
-                {stats?.codex.winRate.toFixed(1) || 0}%
-              </div>
-              <div className="text-gray-400">Codex Win Rate</div>
-            </div>
-            <div className="bg-gray-900/50 rounded-xl p-6 text-center">
-              <div className="text-3xl font-bold text-green-400 mb-2">
-                +{(Math.max(stats?.opus.bestMultiplier || 1, stats?.codex.bestMultiplier || 1) * 100 - 100).toFixed(0)}%
-              </div>
-              <div className="text-gray-400">Best Call Ever</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Recent Rounds */}
-      {recent.length > 0 && (
-        <section className="py-16 px-4 border-t border-gray-800">
-          <div className="max-w-6xl mx-auto">
-            <h2 className="text-2xl font-bold mb-8">Recent Battles</h2>
-            <div className="space-y-4">
-              {recent.map((battle) => (
-                <div key={battle.round_id} className="bg-gray-900/50 border border-gray-800 rounded-xl p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <span className="text-gray-500">#{battle.round_id}</span>
-                    <div className={`px-3 py-1 rounded ${battle.winner === 'opus' ? 'bg-opus/20 text-opus' : 'bg-codex/20 text-codex'}`}>
-                      {battle.winner === 'opus' ? '🧠 Opus' : '🤖 Codex'}
-                    </div>
-                  </div>
-                  <div className="flex gap-8">
-                    <div className="text-right">
-                      <div className="text-sm text-gray-500">Opus: ${battle.opus_token}</div>
-                      <div className={battle.winner === 'opus' ? 'text-green-400' : 'text-gray-400'}>
-                        {formatMultiplier(battle.opus_result)}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm text-gray-500">Codex: ${battle.codex_token}</div>
-                      <div className={battle.winner === 'codex' ? 'text-green-400' : 'text-gray-400'}>
-                        {formatMultiplier(battle.codex_result)}
-                      </div>
-                    </div>
-                  </div>
                 </div>
-              ))}
+              )}
             </div>
-          </div>
-        </section>
-      )}
+          )}
+
+          {/* History Tab */}
+          {activeTab === 'history' && (
+            <div className="p-6">
+              <div className="flex items-center gap-2 mb-6">
+                <span className="text-xl">📜</span>
+                <h2 className="font-bold text-lg">Battle History</h2>
+              </div>
+
+              {recent.length > 0 ? (
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {recent.map((battle) => (
+                    <div 
+                      key={battle.round_id} 
+                      className={`rounded-xl border-3 p-4 ${
+                        battle.winner === 'opus' 
+                          ? 'bg-[#fff8e8] border-[#f0b866]' 
+                          : 'bg-[#e8f4ff] border-[#66b8f0]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-sm text-gray-500">Round #{battle.round_id}</span>
+                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                          battle.winner === 'opus'
+                            ? 'bg-[#f0b866] text-white'
+                            : 'bg-[#66b8f0] text-white'
+                        }`}>
+                          {battle.winner === 'opus' ? '🧠 Opus Won' : '🤖 Codex Won'}
+                        </span>
+                      </div>
+                      
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">🧠 ${battle.opus_token}</span>
+                          <span className={battle.winner === 'opus' ? 'text-green-600 font-bold' : 'text-gray-400'}>
+                            {formatMultiplier(battle.opus_result)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">🤖 ${battle.codex_token}</span>
+                          <span className={battle.winner === 'codex' ? 'text-green-600 font-bold' : 'text-gray-400'}>
+                            {formatMultiplier(battle.codex_result)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-gray-500">
+                  No battles yet. Start one in the Arena!
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* About Tab */}
+          {activeTab === 'about' && (
+            <div className="p-6">
+              <div className="flex items-center gap-2 mb-6">
+                <span className="text-xl">ℹ️</span>
+                <h2 className="font-bold text-lg">About ClashAI</h2>
+              </div>
+
+              <div className="space-y-4 text-gray-600">
+                <div className="bg-[#f0f7f1] rounded-xl p-4 border-2 border-[#d4e8d1]">
+                  <h3 className="font-bold text-[#2d5a3d] mb-2">🎮 How it works</h3>
+                  <p className="text-sm">
+                    Two AI models compete in real-time memecoin prediction battles. 
+                    Each round, both AIs analyze pump.fun tokens and make their picks. 
+                    After the timer ends, we compare performance based on market cap changes.
+                  </p>
+                </div>
+
+                <div className="bg-[#f0f7f1] rounded-xl p-4 border-2 border-[#d4e8d1]">
+                  <h3 className="font-bold text-[#2d5a3d] mb-2">🧠 Claude Opus</h3>
+                  <p className="text-sm">
+                    Anthropic's most capable model. Known for nuanced reasoning and careful analysis.
+                  </p>
+                </div>
+
+                <div className="bg-[#f0f7f1] rounded-xl p-4 border-2 border-[#d4e8d1]">
+                  <h3 className="font-bold text-[#2d5a3d] mb-2">🤖 OpenAI Codex</h3>
+                  <p className="text-sm">
+                    OpenAI's code-specialized model. Fast pattern recognition and data analysis.
+                  </p>
+                </div>
+
+                <div className="bg-[#f0f7f1] rounded-xl p-4 border-2 border-[#d4e8d1]">
+                  <h3 className="font-bold text-[#2d5a3d] mb-2">⚠️ Disclaimer</h3>
+                  <p className="text-sm">
+                    This is entertainment only. AI predictions are not financial advice. 
+                    Never invest more than you can afford to lose.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="text-center py-6 text-sm text-[#4a8f5c]">
+          Made with ⚔️ for degens who love AI
+        </div>
+      </div>
     </div>
   );
 }
