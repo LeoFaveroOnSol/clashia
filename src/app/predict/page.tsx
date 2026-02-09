@@ -28,16 +28,13 @@ interface MarketWithCalls extends Market {
   codexCall: AICall;
 }
 
-// Generate AI calls based on market data
 function generateAICalls(market: Market): { opus: AICall; codex: AICall } {
   const hash = market.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   
-  // Use market price to influence AI decisions
   const marketBias = market.yesPrice > 50 ? 0.6 : 0.4;
   const opusLeanYes = Math.random() < marketBias + (hash % 20 - 10) / 100;
   const codexLeanYes = Math.random() < marketBias + ((hash * 7) % 20 - 10) / 100;
   
-  // Higher confidence when agreeing with market
   const opusAgrees = (opusLeanYes && market.yesPrice > 50) || (!opusLeanYes && market.noPrice > 50);
   const codexAgrees = (codexLeanYes && market.yesPrice > 50) || (!codexLeanYes && market.noPrice > 50);
   
@@ -46,34 +43,33 @@ function generateAICalls(market: Market): { opus: AICall; codex: AICall } {
 
   const cryptoReasons = {
     yes: [
-      'Bullish momentum and strong support levels suggest upside.',
-      'On-chain metrics and whale accumulation favor this outcome.',
-      'Technical indicators align with bullish continuation.',
-      'Market sentiment and funding rates support this direction.',
+      'Strong support levels holding. Momentum favors continuation.',
+      'Volume profile and order flow suggest upside.',
+      'Key moving averages aligned bullish.',
+      'Funding rates neutral, room for expansion.',
     ],
     no: [
-      'Resistance levels and declining volume suggest rejection.',
-      'Risk-off sentiment in macro environment adds pressure.',
-      'Technical breakdown likely given current structure.',
-      'Profit-taking and distribution patterns indicate reversal.',
+      'Hitting resistance with declining volume.',
+      'Macro pressure weighing on risk assets.',
+      'Distribution pattern forming on higher timeframes.',
+      'Sentiment overheated, mean reversion likely.',
     ],
   };
 
-  const politicsReasons = {
+  const defaultReasons = {
     yes: [
-      'Historical precedent and current polling support this.',
-      'Political momentum and recent developments favor this outcome.',
-      'Policy trajectory and key stakeholder positions align.',
+      'Fundamentals and timing align with this outcome.',
+      'Historical data supports this resolution.',
+      'Key factors trending in this direction.',
     ],
     no: [
-      'Structural barriers and opposition make this unlikely.',
-      'Historical patterns suggest this outcome is improbable.',
-      'Current political dynamics work against this resolution.',
+      'Structural headwinds make this unlikely.',
+      'Data points against this outcome.',
+      'Timing and conditions unfavorable.',
     ],
   };
 
-  const getReasons = (cat: string) => cat === 'crypto' ? cryptoReasons : politicsReasons;
-  const reasons = getReasons(market.category);
+  const reasons = market.category === 'crypto' ? cryptoReasons : defaultReasons;
 
   return {
     opus: {
@@ -92,7 +88,7 @@ function generateAICalls(market: Market): { opus: AICall; codex: AICall } {
 function formatVolume(vol: number): string {
   if (vol >= 1000000) return `$${(vol / 1000000).toFixed(1)}M`;
   if (vol >= 1000) return `$${(vol / 1000).toFixed(0)}K`;
-  if (vol === 0) return 'Daily';
+  if (vol === 0) return '';
   return `$${vol.toFixed(0)}`;
 }
 
@@ -105,16 +101,6 @@ function getTimeUntil(date: string): string {
   if (days > 0) return `${days}d ${hours}h`;
   if (hours > 0) return `${hours}h ${mins}m`;
   return `${mins}m`;
-}
-
-function getCategoryIcon(cat: string): string {
-  switch (cat) {
-    case 'crypto': return '₿';
-    case 'politics': return '🏛️';
-    case 'sports': return '🏆';
-    case 'tech': return '🚀';
-    default: return '📊';
-  }
 }
 
 export default function PredictPage() {
@@ -164,248 +150,187 @@ export default function PredictPage() {
   const agreeCount = markets.filter(m => m.opusCall.position === m.codexCall.position).length;
 
   return (
-    <div className="min-h-screen bg-[#d4e8d1] pt-20">
-      <div className="max-w-6xl mx-auto p-4">
+    <div className="min-h-screen bg-[#0a0a0a] pt-20 text-white">
+      <div className="max-w-5xl mx-auto p-4">
         
         {/* Header */}
-        <div className="text-center mb-6">
-          <h1 className="text-4xl font-bold text-[#2d5a3d] mb-2">🎯 Live Prediction Arena</h1>
-          <p className="text-[#4a8f5c]">Real markets + Daily crypto predictions • AI calls updated live</p>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-white mb-1">Prediction Arena</h1>
+          <p className="text-gray-500 text-sm">Live markets from Polymarket + daily crypto calls</p>
         </div>
 
-        {/* Live Prices Banner */}
+        {/* Live Prices */}
         {prices.btc > 0 && (
-          <div className="bg-gradient-to-r from-[#f7931a] via-[#627eea] to-[#14f195] p-[2px] rounded-2xl mb-6">
-            <div className="bg-white rounded-2xl p-4">
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <div className="text-xs text-gray-500">Bitcoin</div>
-                  <div className="text-xl font-bold text-[#f7931a]">${prices.btc.toLocaleString()}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-gray-500">Ethereum</div>
-                  <div className="text-xl font-bold text-[#627eea]">${prices.eth.toLocaleString()}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-gray-500">Solana</div>
-                  <div className="text-xl font-bold text-[#14f195]">${prices.sol.toFixed(2)}</div>
-                </div>
-              </div>
+          <div className="flex gap-6 mb-6 text-sm">
+            <div className="flex items-center gap-2">
+              <span className="text-gray-500">BTC</span>
+              <span className="font-mono font-medium">${prices.btc.toLocaleString()}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-500">ETH</span>
+              <span className="font-mono font-medium">${prices.eth.toLocaleString()}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-500">SOL</span>
+              <span className="font-mono font-medium">${prices.sol.toFixed(2)}</span>
             </div>
           </div>
         )}
 
-        {/* Time Filter */}
-        <div className="flex flex-wrap gap-3 mb-4">
-          <div className="flex gap-2 bg-white rounded-xl p-1 border-2 border-[#2d5a3d]">
-            <button
-              onClick={() => setTimeFilter('today')}
-              className={`px-4 py-2 rounded-lg font-medium transition ${
-                timeFilter === 'today'
-                  ? 'bg-[#2d5a3d] text-white'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              ⚡ Today ({todayCount})
-            </button>
-            <button
-              onClick={() => setTimeFilter('week')}
-              className={`px-4 py-2 rounded-lg font-medium transition ${
-                timeFilter === 'week'
-                  ? 'bg-[#2d5a3d] text-white'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              📅 This Week
-            </button>
-            <button
-              onClick={() => setTimeFilter('all')}
-              className={`px-4 py-2 rounded-lg font-medium transition ${
-                timeFilter === 'all'
-                  ? 'bg-[#2d5a3d] text-white'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              🌐 All
-            </button>
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-4 mb-6 pb-6 border-b border-gray-800">
+          <div className="flex gap-1 bg-gray-900 rounded-lg p-1">
+            {[
+              { key: 'today', label: 'Today' },
+              { key: 'week', label: 'This Week' },
+              { key: 'all', label: 'All' },
+            ].map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setTimeFilter(key as any)}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                  timeFilter === key
+                    ? 'bg-white text-black'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
 
-          <div className="flex gap-2 ml-auto">
+          <div className="flex gap-2 ml-auto text-sm">
             <button
               onClick={() => setAiFilter('all')}
-              className={`px-3 py-2 rounded-xl text-sm font-medium transition ${
-                aiFilter === 'all' ? 'bg-[#4a8f5c] text-white' : 'bg-white text-gray-600 border-2 border-gray-200'
+              className={`px-3 py-1.5 rounded-md transition ${
+                aiFilter === 'all' ? 'bg-gray-800 text-white' : 'text-gray-500 hover:text-white'
               }`}
             >
               All
             </button>
             <button
               onClick={() => setAiFilter('agree')}
-              className={`px-3 py-2 rounded-xl text-sm font-medium transition ${
-                aiFilter === 'agree' ? 'bg-green-600 text-white' : 'bg-white text-gray-600 border-2 border-gray-200'
+              className={`px-3 py-1.5 rounded-md transition ${
+                aiFilter === 'agree' ? 'bg-green-900/50 text-green-400' : 'text-gray-500 hover:text-white'
               }`}
             >
-              🤝 Agree ({agreeCount})
+              Consensus ({agreeCount})
             </button>
             <button
               onClick={() => setAiFilter('disagree')}
-              className={`px-3 py-2 rounded-xl text-sm font-medium transition ${
-                aiFilter === 'disagree' ? 'bg-orange-500 text-white' : 'bg-white text-gray-600 border-2 border-gray-200'
+              className={`px-3 py-1.5 rounded-md transition ${
+                aiFilter === 'disagree' ? 'bg-orange-900/50 text-orange-400' : 'text-gray-500 hover:text-white'
               }`}
             >
-              ⚔️ Disagree
+              Split
             </button>
           </div>
         </div>
 
-        {/* Loading/Error States */}
+        {/* Loading */}
         {loading && (
-          <div className="text-center py-12 bg-white rounded-2xl border-4 border-gray-200">
-            <div className="text-4xl mb-3 animate-pulse">🔮</div>
-            <p className="text-gray-500">Loading predictions...</p>
+          <div className="text-center py-16">
+            <div className="text-gray-500">Loading predictions...</div>
           </div>
         )}
 
+        {/* Error */}
         {error && (
-          <div className="text-center py-12 bg-red-50 rounded-2xl border-4 border-red-200">
-            <div className="text-4xl mb-3">❌</div>
-            <p className="text-red-600">{error}</p>
+          <div className="text-center py-16">
+            <div className="text-red-400">{error}</div>
           </div>
         )}
 
-        {/* Markets Grid */}
+        {/* Markets */}
         {!loading && !error && (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {filteredMarkets.map((market) => (
               <div 
                 key={market.id}
-                className={`bg-white rounded-2xl border-4 shadow-lg overflow-hidden hover:shadow-xl transition ${
+                className={`bg-gray-900/50 rounded-xl border overflow-hidden ${
                   market.resolvesToday 
-                    ? 'border-green-500 ring-2 ring-green-200' 
-                    : 'border-[#2d5a3d]'
+                    ? 'border-green-500/30' 
+                    : 'border-gray-800'
                 }`}
               >
-                {/* Today Badge */}
+                {/* Today indicator */}
                 {market.resolvesToday && (
-                  <div className="bg-green-500 text-white text-center py-1 text-sm font-medium">
-                    ⚡ Resolves TODAY at 23:59 UTC
+                  <div className="bg-green-500/10 text-green-400 text-xs px-4 py-1.5 border-b border-green-500/20">
+                    Resolves today 23:59 UTC
                   </div>
                 )}
 
-                {/* Market Header */}
-                <div className="p-4 border-b border-gray-100">
-                  <div className="flex items-start gap-4">
+                {/* Market info */}
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-4 mb-4">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2 flex-wrap">
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      <div className="flex items-center gap-2 mb-2 text-xs">
+                        <span className={`px-2 py-0.5 rounded ${
                           market.source === 'daily' 
-                            ? 'bg-green-100 text-green-700' 
-                            : 'bg-purple-100 text-purple-700'
+                            ? 'bg-green-500/10 text-green-400' 
+                            : 'bg-purple-500/10 text-purple-400'
                         }`}>
-                          {market.source === 'daily' ? '⚡ Daily' : '🟣 Polymarket'}
+                          {market.source === 'daily' ? 'Daily' : 'Polymarket'}
                         </span>
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                          {getCategoryIcon(market.category)} {market.category}
-                        </span>
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                          ⏱️ {getTimeUntil(market.endDate)}
-                        </span>
+                        <span className="text-gray-600">{market.category}</span>
+                        <span className="text-gray-600">{getTimeUntil(market.endDate)}</span>
                         {market.volume > 0 && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                            Vol: {formatVolume(market.volume)}
-                          </span>
+                          <span className="text-gray-600">{formatVolume(market.volume)} vol</span>
                         )}
                       </div>
-                      <h3 className="font-bold text-lg text-[#2d5a3d] leading-tight">{market.question}</h3>
+                      <h3 className="font-medium text-white leading-snug">{market.question}</h3>
                       {market.description && (
-                        <p className="text-sm text-gray-500 mt-1">{market.description}</p>
+                        <p className="text-gray-500 text-sm mt-1">{market.description}</p>
                       )}
                     </div>
                     
-                    {/* Market Odds */}
-                    <div className="text-right flex-shrink-0">
-                      <div className="text-xs text-gray-500 mb-1">Market Odds</div>
-                      <div className="flex gap-2">
-                        <div className="bg-green-100 px-3 py-1 rounded-lg">
-                          <span className="text-xs text-gray-500">YES</span>
-                          <div className="font-bold text-green-700">{market.yesPrice.toFixed(0)}%</div>
-                        </div>
-                        <div className="bg-red-100 px-3 py-1 rounded-lg">
-                          <span className="text-xs text-gray-500">NO</span>
-                          <div className="font-bold text-red-600">{market.noPrice.toFixed(0)}%</div>
-                        </div>
+                    {/* Odds */}
+                    <div className="flex gap-2 text-sm">
+                      <div className="text-center px-3 py-2 bg-gray-800/50 rounded-lg">
+                        <div className="text-gray-500 text-xs mb-0.5">Yes</div>
+                        <div className="font-mono font-medium text-green-400">{market.yesPrice.toFixed(0)}%</div>
+                      </div>
+                      <div className="text-center px-3 py-2 bg-gray-800/50 rounded-lg">
+                        <div className="text-gray-500 text-xs mb-0.5">No</div>
+                        <div className="font-mono font-medium text-red-400">{market.noPrice.toFixed(0)}%</div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                {/* AI Predictions */}
-                <div className="grid md:grid-cols-2 divide-x divide-gray-100">
-                  {/* Opus */}
-                  <div className="p-4 bg-[#fffcf5]">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl">🧠</span>
-                        <span className="font-bold text-[#8a6830]">Claude Opus</span>
+                  {/* AI Calls */}
+                  <div className="grid md:grid-cols-2 gap-3">
+                    {/* Opus */}
+                    <div className="bg-gray-800/30 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-gray-400">Opus</span>
+                        <span className={`text-sm font-medium ${
+                          market.opusCall.position === 'YES' ? 'text-green-400' : 'text-red-400'
+                        }`}>
+                          {market.opusCall.position} · {market.opusCall.confidence}%
+                        </span>
                       </div>
-                      <span className={`px-3 py-1 rounded-full font-bold text-sm ${
-                        market.opusCall.position === 'YES' 
-                          ? 'bg-green-500 text-white' 
-                          : 'bg-red-500 text-white'
-                      }`}>
-                        {market.opusCall.position}
-                      </span>
+                      <p className="text-xs text-gray-500">{market.opusCall.reasoning}</p>
                     </div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="flex-1 bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-[#f0b866] h-2 rounded-full"
-                          style={{ width: `${market.opusCall.confidence}%` }}
-                        />
+
+                    {/* Codex */}
+                    <div className="bg-gray-800/30 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-gray-400">Codex</span>
+                        <span className={`text-sm font-medium ${
+                          market.codexCall.position === 'YES' ? 'text-green-400' : 'text-red-400'
+                        }`}>
+                          {market.codexCall.position} · {market.codexCall.confidence}%
+                        </span>
                       </div>
-                      <span className="text-sm font-medium text-[#8a6830]">{market.opusCall.confidence}%</span>
+                      <p className="text-xs text-gray-500">{market.codexCall.reasoning}</p>
                     </div>
-                    <p className="text-sm text-gray-600">"{market.opusCall.reasoning}"</p>
                   </div>
 
-                  {/* Codex */}
-                  <div className="p-4 bg-[#f5faff]">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl">🤖</span>
-                        <span className="font-bold text-[#306088]">OpenAI Codex</span>
-                      </div>
-                      <span className={`px-3 py-1 rounded-full font-bold text-sm ${
-                        market.codexCall.position === 'YES' 
-                          ? 'bg-green-500 text-white' 
-                          : 'bg-red-500 text-white'
-                      }`}>
-                        {market.codexCall.position}
-                      </span>
+                  {/* Verdict */}
+                  {market.opusCall.position !== market.codexCall.position && (
+                    <div className="mt-3 text-center text-xs text-orange-400/70">
+                      Models disagree on this one
                     </div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="flex-1 bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-[#66b8f0] h-2 rounded-full"
-                          style={{ width: `${market.codexCall.confidence}%` }}
-                        />
-                      </div>
-                      <span className="text-sm font-medium text-[#306088]">{market.codexCall.confidence}%</span>
-                    </div>
-                    <p className="text-sm text-gray-600">"{market.codexCall.reasoning}"</p>
-                  </div>
-                </div>
-
-                {/* Verdict */}
-                <div className={`px-4 py-2 text-center text-sm font-medium ${
-                  market.opusCall.position === market.codexCall.position
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-orange-100 text-orange-700'
-                }`}>
-                  {market.opusCall.position === market.codexCall.position ? (
-                    <span>🤝 Both AIs predict: <strong>{market.opusCall.position}</strong></span>
-                  ) : (
-                    <span>⚔️ Opus: {market.opusCall.position} vs Codex: {market.codexCall.position}</span>
                   )}
                 </div>
               </div>
@@ -414,26 +339,10 @@ export default function PredictPage() {
         )}
 
         {filteredMarkets.length === 0 && !loading && (
-          <div className="text-center py-12 bg-white rounded-2xl border-4 border-gray-200">
-            <div className="text-4xl mb-3">🔍</div>
+          <div className="text-center py-16">
             <p className="text-gray-500">No predictions match your filters</p>
           </div>
         )}
-
-        {/* Info */}
-        <div className="mt-8 bg-white rounded-2xl border-4 border-[#2d5a3d] p-6 shadow-lg">
-          <h3 className="font-bold text-lg text-[#2d5a3d] mb-4">📊 How It Works</h3>
-          <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-600">
-            <div className="bg-green-50 rounded-xl p-4 border-2 border-green-200">
-              <strong className="text-green-700">⚡ Daily Predictions</strong>
-              <p className="mt-1">Crypto price predictions that resolve at 23:59 UTC today. Results verified against live prices.</p>
-            </div>
-            <div className="bg-purple-50 rounded-xl p-4 border-2 border-purple-200">
-              <strong className="text-purple-700">🟣 Polymarket</strong>
-              <p className="mt-1">Real prediction markets with real money. Odds and volumes from live markets.</p>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
