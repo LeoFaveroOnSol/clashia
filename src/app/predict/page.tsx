@@ -5,7 +5,8 @@ import { useEffect, useState } from 'react';
 interface Market {
   id: string;
   question: string;
-  source: 'polymarket';
+  source: 'polymarket' | 'daily';
+  category: 'politics' | 'crypto' | 'sports' | 'tech' | 'other';
   yesPrice: number;
   noPrice: number;
   volume: number;
@@ -13,6 +14,7 @@ interface Market {
   endDate: string;
   image?: string;
   description?: string;
+  resolvesToday: boolean;
 }
 
 interface AICall {
@@ -26,44 +28,63 @@ interface MarketWithCalls extends Market {
   codexCall: AICall;
 }
 
-// Generate AI calls based on market data (deterministic based on market ID)
+// Generate AI calls based on market data
 function generateAICalls(market: Market): { opus: AICall; codex: AICall } {
-  // Use market ID hash for deterministic but varied results
   const hash = market.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   
-  const opusLeanYes = (hash % 100) > 45;
-  const codexLeanYes = ((hash * 7) % 100) > 50;
+  // Use market price to influence AI decisions
+  const marketBias = market.yesPrice > 50 ? 0.6 : 0.4;
+  const opusLeanYes = Math.random() < marketBias + (hash % 20 - 10) / 100;
+  const codexLeanYes = Math.random() < marketBias + ((hash * 7) % 20 - 10) / 100;
   
-  const opusConf = 55 + (hash % 35);
-  const codexConf = 50 + ((hash * 3) % 40);
+  // Higher confidence when agreeing with market
+  const opusAgrees = (opusLeanYes && market.yesPrice > 50) || (!opusLeanYes && market.noPrice > 50);
+  const codexAgrees = (codexLeanYes && market.yesPrice > 50) || (!codexLeanYes && market.noPrice > 50);
+  
+  const opusConf = opusAgrees ? 60 + (hash % 30) : 50 + (hash % 25);
+  const codexConf = codexAgrees ? 55 + ((hash * 3) % 35) : 48 + ((hash * 3) % 27);
 
-  // Generate reasoning based on market
-  const opusReasons = [
-    'Historical patterns and fundamentals support this position.',
-    'Market sentiment analysis indicates strong directional bias.',
-    'Key indicators align with this outcome probability.',
-    'Risk-adjusted analysis favors this position.',
-    'Macro factors and timing suggest this resolution.',
-  ];
-  
-  const codexReasons = [
-    'Data patterns from similar markets support this call.',
-    'Statistical models show edge in this direction.',
-    'Market efficiency analysis suggests mispricing.',
-    'Trend analysis and momentum favor this outcome.',
-    'Quantitative signals align with this prediction.',
-  ];
+  const cryptoReasons = {
+    yes: [
+      'Bullish momentum and strong support levels suggest upside.',
+      'On-chain metrics and whale accumulation favor this outcome.',
+      'Technical indicators align with bullish continuation.',
+      'Market sentiment and funding rates support this direction.',
+    ],
+    no: [
+      'Resistance levels and declining volume suggest rejection.',
+      'Risk-off sentiment in macro environment adds pressure.',
+      'Technical breakdown likely given current structure.',
+      'Profit-taking and distribution patterns indicate reversal.',
+    ],
+  };
+
+  const politicsReasons = {
+    yes: [
+      'Historical precedent and current polling support this.',
+      'Political momentum and recent developments favor this outcome.',
+      'Policy trajectory and key stakeholder positions align.',
+    ],
+    no: [
+      'Structural barriers and opposition make this unlikely.',
+      'Historical patterns suggest this outcome is improbable.',
+      'Current political dynamics work against this resolution.',
+    ],
+  };
+
+  const getReasons = (cat: string) => cat === 'crypto' ? cryptoReasons : politicsReasons;
+  const reasons = getReasons(market.category);
 
   return {
     opus: {
       position: opusLeanYes ? 'YES' : 'NO',
-      confidence: opusConf,
-      reasoning: opusReasons[hash % opusReasons.length],
+      confidence: Math.round(opusConf),
+      reasoning: (opusLeanYes ? reasons.yes : reasons.no)[hash % (opusLeanYes ? reasons.yes : reasons.no).length],
     },
     codex: {
       position: codexLeanYes ? 'YES' : 'NO',
-      confidence: codexConf,
-      reasoning: codexReasons[(hash * 2) % codexReasons.length],
+      confidence: Math.round(codexConf),
+      reasoning: (codexLeanYes ? reasons.yes : reasons.no)[(hash * 2) % (codexLeanYes ? reasons.yes : reasons.no).length],
     },
   };
 }
@@ -71,44 +92,55 @@ function generateAICalls(market: Market): { opus: AICall; codex: AICall } {
 function formatVolume(vol: number): string {
   if (vol >= 1000000) return `$${(vol / 1000000).toFixed(1)}M`;
   if (vol >= 1000) return `$${(vol / 1000).toFixed(0)}K`;
+  if (vol === 0) return 'Daily';
   return `$${vol.toFixed(0)}`;
 }
 
 function getTimeUntil(date: string): string {
   const diff = new Date(date).getTime() - Date.now();
-  if (diff <= 0) return 'Ended';
+  if (diff <= 0) return 'Ending';
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
   const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  if (days > 30) return `${Math.floor(days / 30)}mo`;
-  if (days > 0) return `${days}d ${hours}h`;
   const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  return `${hours}h ${mins}m`;
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${mins}m`;
+  return `${mins}m`;
+}
+
+function getCategoryIcon(cat: string): string {
+  switch (cat) {
+    case 'crypto': return '₿';
+    case 'politics': return '🏛️';
+    case 'sports': return '🏆';
+    case 'tech': return '🚀';
+    default: return '📊';
+  }
 }
 
 export default function PredictPage() {
   const [markets, setMarkets] = useState<MarketWithCalls[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'all' | 'agree' | 'disagree'>('all');
+  const [timeFilter, setTimeFilter] = useState<'today' | 'week' | 'all'>('today');
+  const [aiFilter, setAiFilter] = useState<'all' | 'agree' | 'disagree'>('all');
+  const [prices, setPrices] = useState({ btc: 0, eth: 0, sol: 0 });
 
   useEffect(() => {
     const fetchMarkets = async () => {
       try {
-        const res = await fetch('/api/markets');
-        if (!res.ok) throw new Error('Failed to fetch markets');
+        const res = await fetch(`/api/markets?filter=${timeFilter}`);
+        if (!res.ok) throw new Error('Failed to fetch');
         const data = await res.json();
         
-        // Add AI calls to each market
+        setPrices(data.prices || { btc: 0, eth: 0, sol: 0 });
+        
         const marketsWithCalls: MarketWithCalls[] = data.markets.map((m: Market) => {
           const calls = generateAICalls(m);
-          return {
-            ...m,
-            opusCall: calls.opus,
-            codexCall: calls.codex,
-          };
+          return { ...m, opusCall: calls.opus, codexCall: calls.codex };
         });
         
         setMarkets(marketsWithCalls);
+        setError(null);
       } catch (err) {
         setError('Failed to load markets');
         console.error(err);
@@ -118,18 +150,18 @@ export default function PredictPage() {
     };
 
     fetchMarkets();
-    const interval = setInterval(fetchMarkets, 60000); // Refresh every minute
+    const interval = setInterval(fetchMarkets, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [timeFilter]);
 
   const filteredMarkets = markets.filter(m => {
-    if (filter === 'agree') return m.opusCall.position === m.codexCall.position;
-    if (filter === 'disagree') return m.opusCall.position !== m.codexCall.position;
+    if (aiFilter === 'agree') return m.opusCall.position === m.codexCall.position;
+    if (aiFilter === 'disagree') return m.opusCall.position !== m.codexCall.position;
     return true;
   });
 
+  const todayCount = markets.filter(m => m.resolvesToday).length;
   const agreeCount = markets.filter(m => m.opusCall.position === m.codexCall.position).length;
-  const disagreeCount = markets.length - agreeCount;
 
   return (
     <div className="min-h-screen bg-[#d4e8d1] pt-20">
@@ -137,75 +169,103 @@ export default function PredictPage() {
         
         {/* Header */}
         <div className="text-center mb-6">
-          <h1 className="text-4xl font-bold text-[#2d5a3d] mb-2">🎯 Live Prediction Markets</h1>
-          <p className="text-[#4a8f5c]">Real markets from Polymarket • AI predictions updated live</p>
+          <h1 className="text-4xl font-bold text-[#2d5a3d] mb-2">🎯 Live Prediction Arena</h1>
+          <p className="text-[#4a8f5c]">Real markets + Daily crypto predictions • AI calls updated live</p>
         </div>
 
-        {/* Stats Banner */}
-        <div className="bg-white rounded-2xl border-4 border-[#2d5a3d] p-4 mb-6 shadow-lg">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-            <div>
-              <div className="text-sm text-gray-500">Active Markets</div>
-              <div className="text-2xl font-bold text-[#2d5a3d]">{markets.length}</div>
+        {/* Live Prices Banner */}
+        {prices.btc > 0 && (
+          <div className="bg-gradient-to-r from-[#f7931a] via-[#627eea] to-[#14f195] p-[2px] rounded-2xl mb-6">
+            <div className="bg-white rounded-2xl p-4">
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <div className="text-xs text-gray-500">Bitcoin</div>
+                  <div className="text-xl font-bold text-[#f7931a]">${prices.btc.toLocaleString()}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Ethereum</div>
+                  <div className="text-xl font-bold text-[#627eea]">${prices.eth.toLocaleString()}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Solana</div>
+                  <div className="text-xl font-bold text-[#14f195]">${prices.sol.toFixed(2)}</div>
+                </div>
+              </div>
             </div>
-            <div>
-              <div className="text-sm text-gray-500">🤝 AIs Agree</div>
-              <div className="text-2xl font-bold text-green-600">{agreeCount}</div>
-            </div>
-            <div>
-              <div className="text-sm text-gray-500">⚔️ AIs Disagree</div>
-              <div className="text-2xl font-bold text-orange-500">{disagreeCount}</div>
-            </div>
-            <div>
-              <div className="text-sm text-gray-500">Source</div>
-              <div className="text-xl font-bold text-purple-600">🟣 Polymarket</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="flex gap-2 mb-6">
-          <button
-            onClick={() => setFilter('all')}
-            className={`px-5 py-2 rounded-xl font-medium transition ${
-              filter === 'all'
-                ? 'bg-[#2d5a3d] text-white'
-                : 'bg-white text-gray-600 border-2 border-gray-200'
-            }`}
-          >
-            All ({markets.length})
-          </button>
-          <button
-            onClick={() => setFilter('agree')}
-            className={`px-5 py-2 rounded-xl font-medium transition flex items-center gap-1 ${
-              filter === 'agree'
-                ? 'bg-green-600 text-white'
-                : 'bg-white text-gray-600 border-2 border-gray-200'
-            }`}
-          >
-            🤝 Agree ({agreeCount})
-          </button>
-          <button
-            onClick={() => setFilter('disagree')}
-            className={`px-5 py-2 rounded-xl font-medium transition flex items-center gap-1 ${
-              filter === 'disagree'
-                ? 'bg-orange-500 text-white'
-                : 'bg-white text-gray-600 border-2 border-gray-200'
-            }`}
-          >
-            ⚔️ Disagree ({disagreeCount})
-          </button>
-        </div>
-
-        {/* Loading State */}
-        {loading && (
-          <div className="text-center py-12 bg-white rounded-2xl border-4 border-gray-200">
-            <div className="text-4xl mb-3 animate-pulse">🔮</div>
-            <p className="text-gray-500">Loading markets from Polymarket...</p>
           </div>
         )}
 
-        {/* Error State */}
+        {/* Time Filter */}
+        <div className="flex flex-wrap gap-3 mb-4">
+          <div className="flex gap-2 bg-white rounded-xl p-1 border-2 border-[#2d5a3d]">
+            <button
+              onClick={() => setTimeFilter('today')}
+              className={`px-4 py-2 rounded-lg font-medium transition ${
+                timeFilter === 'today'
+                  ? 'bg-[#2d5a3d] text-white'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              ⚡ Today ({todayCount})
+            </button>
+            <button
+              onClick={() => setTimeFilter('week')}
+              className={`px-4 py-2 rounded-lg font-medium transition ${
+                timeFilter === 'week'
+                  ? 'bg-[#2d5a3d] text-white'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              📅 This Week
+            </button>
+            <button
+              onClick={() => setTimeFilter('all')}
+              className={`px-4 py-2 rounded-lg font-medium transition ${
+                timeFilter === 'all'
+                  ? 'bg-[#2d5a3d] text-white'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              🌐 All
+            </button>
+          </div>
+
+          <div className="flex gap-2 ml-auto">
+            <button
+              onClick={() => setAiFilter('all')}
+              className={`px-3 py-2 rounded-xl text-sm font-medium transition ${
+                aiFilter === 'all' ? 'bg-[#4a8f5c] text-white' : 'bg-white text-gray-600 border-2 border-gray-200'
+              }`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setAiFilter('agree')}
+              className={`px-3 py-2 rounded-xl text-sm font-medium transition ${
+                aiFilter === 'agree' ? 'bg-green-600 text-white' : 'bg-white text-gray-600 border-2 border-gray-200'
+              }`}
+            >
+              🤝 Agree ({agreeCount})
+            </button>
+            <button
+              onClick={() => setAiFilter('disagree')}
+              className={`px-3 py-2 rounded-xl text-sm font-medium transition ${
+                aiFilter === 'disagree' ? 'bg-orange-500 text-white' : 'bg-white text-gray-600 border-2 border-gray-200'
+              }`}
+            >
+              ⚔️ Disagree
+            </button>
+          </div>
+        </div>
+
+        {/* Loading/Error States */}
+        {loading && (
+          <div className="text-center py-12 bg-white rounded-2xl border-4 border-gray-200">
+            <div className="text-4xl mb-3 animate-pulse">🔮</div>
+            <p className="text-gray-500">Loading predictions...</p>
+          </div>
+        )}
+
         {error && (
           <div className="text-center py-12 bg-red-50 rounded-2xl border-4 border-red-200">
             <div className="text-4xl mb-3">❌</div>
@@ -219,31 +279,47 @@ export default function PredictPage() {
             {filteredMarkets.map((market) => (
               <div 
                 key={market.id}
-                className="bg-white rounded-2xl border-4 border-[#2d5a3d] shadow-lg overflow-hidden hover:shadow-xl transition"
+                className={`bg-white rounded-2xl border-4 shadow-lg overflow-hidden hover:shadow-xl transition ${
+                  market.resolvesToday 
+                    ? 'border-green-500 ring-2 ring-green-200' 
+                    : 'border-[#2d5a3d]'
+                }`}
               >
+                {/* Today Badge */}
+                {market.resolvesToday && (
+                  <div className="bg-green-500 text-white text-center py-1 text-sm font-medium">
+                    ⚡ Resolves TODAY at 23:59 UTC
+                  </div>
+                )}
+
                 {/* Market Header */}
                 <div className="p-4 border-b border-gray-100">
                   <div className="flex items-start gap-4">
-                    {market.image && (
-                      <img 
-                        src={market.image} 
-                        alt="" 
-                        className="w-16 h-16 rounded-xl object-cover flex-shrink-0"
-                      />
-                    )}
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2 flex-wrap">
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
-                          🟣 Polymarket
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                          market.source === 'daily' 
+                            ? 'bg-green-100 text-green-700' 
+                            : 'bg-purple-100 text-purple-700'
+                        }`}>
+                          {market.source === 'daily' ? '⚡ Daily' : '🟣 Polymarket'}
                         </span>
                         <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                          Vol: {formatVolume(market.volume)}
+                          {getCategoryIcon(market.category)} {market.category}
                         </span>
                         <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
                           ⏱️ {getTimeUntil(market.endDate)}
                         </span>
+                        {market.volume > 0 && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                            Vol: {formatVolume(market.volume)}
+                          </span>
+                        )}
                       </div>
                       <h3 className="font-bold text-lg text-[#2d5a3d] leading-tight">{market.question}</h3>
+                      {market.description && (
+                        <p className="text-sm text-gray-500 mt-1">{market.description}</p>
+                      )}
                     </div>
                     
                     {/* Market Odds */}
@@ -283,7 +359,7 @@ export default function PredictPage() {
                     <div className="flex items-center gap-2 mb-2">
                       <div className="flex-1 bg-gray-200 rounded-full h-2">
                         <div 
-                          className="bg-[#f0b866] h-2 rounded-full transition-all"
+                          className="bg-[#f0b866] h-2 rounded-full"
                           style={{ width: `${market.opusCall.confidence}%` }}
                         />
                       </div>
@@ -310,7 +386,7 @@ export default function PredictPage() {
                     <div className="flex items-center gap-2 mb-2">
                       <div className="flex-1 bg-gray-200 rounded-full h-2">
                         <div 
-                          className="bg-[#66b8f0] h-2 rounded-full transition-all"
+                          className="bg-[#66b8f0] h-2 rounded-full"
                           style={{ width: `${market.codexCall.confidence}%` }}
                         />
                       </div>
@@ -320,7 +396,7 @@ export default function PredictPage() {
                   </div>
                 </div>
 
-                {/* Verdict Footer */}
+                {/* Verdict */}
                 <div className={`px-4 py-2 text-center text-sm font-medium ${
                   market.opusCall.position === market.codexCall.position
                     ? 'bg-green-100 text-green-700'
@@ -329,7 +405,7 @@ export default function PredictPage() {
                   {market.opusCall.position === market.codexCall.position ? (
                     <span>🤝 Both AIs predict: <strong>{market.opusCall.position}</strong></span>
                   ) : (
-                    <span>⚔️ AIs disagree! Opus: {market.opusCall.position} vs Codex: {market.codexCall.position}</span>
+                    <span>⚔️ Opus: {market.opusCall.position} vs Codex: {market.codexCall.position}</span>
                   )}
                 </div>
               </div>
@@ -340,21 +416,21 @@ export default function PredictPage() {
         {filteredMarkets.length === 0 && !loading && (
           <div className="text-center py-12 bg-white rounded-2xl border-4 border-gray-200">
             <div className="text-4xl mb-3">🔍</div>
-            <p className="text-gray-500">No markets match this filter</p>
+            <p className="text-gray-500">No predictions match your filters</p>
           </div>
         )}
 
-        {/* Info Footer */}
+        {/* Info */}
         <div className="mt-8 bg-white rounded-2xl border-4 border-[#2d5a3d] p-6 shadow-lg">
-          <h3 className="font-bold text-lg text-[#2d5a3d] mb-4">📊 About This Page</h3>
+          <h3 className="font-bold text-lg text-[#2d5a3d] mb-4">📊 How It Works</h3>
           <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-600">
-            <div className="bg-[#f0f7f1] rounded-xl p-4">
-              <strong className="text-[#2d5a3d]">🟣 Real Markets</strong>
-              <p className="mt-1">Data pulled live from Polymarket API. Prices and volumes update every minute.</p>
+            <div className="bg-green-50 rounded-xl p-4 border-2 border-green-200">
+              <strong className="text-green-700">⚡ Daily Predictions</strong>
+              <p className="mt-1">Crypto price predictions that resolve at 23:59 UTC today. Results verified against live prices.</p>
             </div>
-            <div className="bg-[#f0f7f1] rounded-xl p-4">
-              <strong className="text-[#2d5a3d]">🤖 AI Predictions</strong>
-              <p className="mt-1">Both AIs analyze each market and give their YES/NO call with confidence level.</p>
+            <div className="bg-purple-50 rounded-xl p-4 border-2 border-purple-200">
+              <strong className="text-purple-700">🟣 Polymarket</strong>
+              <p className="mt-1">Real prediction markets with real money. Odds and volumes from live markets.</p>
             </div>
           </div>
         </div>
