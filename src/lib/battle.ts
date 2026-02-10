@@ -1,6 +1,7 @@
 // AI Battle Logic - Calls every 2 minutes
 import { getTrendingSolana, TrendingPool, getTokenPrice } from './api';
 import { sql, createCall, updateCallPrice, getActiveRound, getRoundCalls } from './db';
+import { generatePrediction } from './predictions';
 
 // AI Personalities - different strategies
 const AI_STRATEGIES = {
@@ -192,6 +193,14 @@ export async function makeNewCalls() {
     opus: opusToken.symbol,
     codex: codexToken.symbol
   });
+  
+  // Generate a new prediction based on the picked tokens
+  try {
+    const tokenForPrediction = Math.random() > 0.5 ? opusToken.symbol : codexToken.symbol;
+    await generatePrediction('$' + tokenForPrediction);
+  } catch (err) {
+    console.error('[Battle] Error generating prediction:', err);
+  }
   
   return { round, opusCall, codexCall };
 }

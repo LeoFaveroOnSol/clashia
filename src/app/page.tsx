@@ -35,14 +35,22 @@ interface CallsData {
   totalCalls: number;
 }
 
-interface Market {
-  id: string;
+interface Prediction {
+  id: number;
   question: string;
-  source: string;
   category: string;
-  yesPrice: number;
-  noPrice: number;
-  resolvesToday: boolean;
+  opus: {
+    position: string;
+    confidence: number;
+    reasoning: string;
+  };
+  codex: {
+    position: string;
+    confidence: number;
+    reasoning: string;
+  };
+  agreement: boolean;
+  createdAt: string;
 }
 
 const TOKEN_CONTRACT = 'CLASHxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
@@ -75,7 +83,7 @@ export default function Home() {
   
   // Real data states
   const [callsData, setCallsData] = useState<CallsData | null>(null);
-  const [markets, setMarkets] = useState<Market[]>([]);
+  const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [loading, setLoading] = useState(true);
   const [nextCallIn, setNextCallIn] = useState(120);
 
@@ -83,9 +91,9 @@ export default function Home() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [callsRes, marketsRes] = await Promise.all([
+        const [callsRes, predictionsRes] = await Promise.all([
           fetch('/api/calls'),
-          fetch('/api/markets?filter=today')
+          fetch('/api/predictions')
         ]);
         
         if (callsRes.ok) {
@@ -93,9 +101,9 @@ export default function Home() {
           setCallsData(data);
         }
         
-        if (marketsRes.ok) {
-          const data = await marketsRes.json();
-          setMarkets(data.markets?.slice(0, 5) || []);
+        if (predictionsRes.ok) {
+          const data = await predictionsRes.json();
+          setPredictions(data.predictions || []);
         }
       } catch (err) {
         console.error('Error fetching data:', err);
@@ -258,29 +266,47 @@ export default function Home() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowPredictions(false)}>
           <div className="bg-white rounded-2xl border-4 border-[#2d5a3d] shadow-2xl max-w-4xl w-full max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-[#2d5a3d] px-6 py-4 flex items-center justify-between sticky top-0">
-              <span className="text-white font-bold">Today's Predictions</span>
+              <span className="text-white font-bold">AI Predictions (Live)</span>
               <button onClick={() => setShowPredictions(false)} className="text-[#a8d4b0] hover:text-white text-xl">×</button>
             </div>
             <div className="p-6">
-              {markets.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">Loading predictions...</p>
+              {predictions.length === 0 ? (
+                <p className="text-gray-500 text-center py-8">Loading predictions... First one coming in {formatCountdown(nextCallIn)}</p>
               ) : (
                 <div className="space-y-4">
-                  {markets.map((market) => (
-                    <div key={market.id} className="bg-[#f0f7f1] rounded-xl p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="font-medium text-[#2d5a3d]">{market.question}</div>
-                        <div className="flex gap-2 text-sm">
-                          <span className="text-green-600 font-mono">{market.yesPrice.toFixed(0)}% YES</span>
-                          <span className="text-red-500 font-mono">{market.noPrice.toFixed(0)}% NO</span>
+                  {predictions.slice(0, 10).map((pred) => (
+                    <div key={pred.id} className={`rounded-xl p-4 border-2 ${pred.agreement ? 'bg-green-50 border-green-300' : 'bg-orange-50 border-orange-300'}`}>
+                      <div className="font-medium text-[#2d5a3d] mb-3">{pred.question}</div>
+                      
+                      <div className="grid md:grid-cols-2 gap-3">
+                        {/* Opus */}
+                        <div className="bg-[#fffcf5] rounded-lg p-3 border border-[#f0b866]">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-medium text-[#8a6830]">Opus</span>
+                            <span className={`text-sm font-bold ${pred.opus.position === 'YES' ? 'text-green-600' : 'text-red-500'}`}>
+                              {pred.opus.position} · {pred.opus.confidence}%
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500">{pred.opus.reasoning}</p>
+                        </div>
+
+                        {/* Codex */}
+                        <div className="bg-[#f5faff] rounded-lg p-3 border border-[#66b8f0]">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-medium text-[#306088]">Codex</span>
+                            <span className={`text-sm font-bold ${pred.codex.position === 'YES' ? 'text-green-600' : 'text-red-500'}`}>
+                              {pred.codex.position} · {pred.codex.confidence}%
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500">{pred.codex.reasoning}</p>
                         </div>
                       </div>
-                      <div className="flex gap-2 text-xs">
-                        <span className={`px-2 py-0.5 rounded ${market.source === 'daily' ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}>
-                          {market.source === 'daily' ? 'Daily' : 'Polymarket'}
+                      
+                      <div className="flex items-center justify-between mt-2 text-xs">
+                        <span className={`px-2 py-0.5 rounded ${pred.agreement ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                          {pred.agreement ? '✓ Both agree' : '⚡ Split decision'}
                         </span>
-                        <span className="text-gray-500">{market.category}</span>
-                        {market.resolvesToday && <span className="text-orange-600">Resolves today</span>}
+                        <span className="text-gray-400">{timeAgo(pred.createdAt)}</span>
                       </div>
                     </div>
                   ))}
