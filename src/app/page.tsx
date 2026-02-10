@@ -56,9 +56,10 @@ interface Prediction {
   createdAt: string;
 }
 
-const TOKEN_CONTRACT = 'CLASHxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
-const TOKEN_MCAP = 125000;
-const TOKEN_PRICE = 0.000125;
+// TODO: Replace with real contract when launched
+const TOKEN_CONTRACT: string = '';
+const TOKEN_MCAP: number = 0;
+const TOKEN_PRICE: number = 0;
 
 function formatMcap(mcap: number): string {
   if (mcap >= 1000000) return `$${(mcap / 1000000).toFixed(2)}M`;
@@ -169,25 +170,35 @@ export default function Home() {
             <button onClick={() => setShowTokenPanel(false)} className="text-[#a8d4b0] hover:text-white text-lg leading-none">×</button>
           </div>
           <div className="p-4">
-            <div className="mb-4">
-              <div className="text-xs text-gray-500 mb-1">Contract</div>
-              <div onClick={() => copyContract(TOKEN_CONTRACT)} className="bg-[#f0f7f1] rounded-lg p-2 text-xs font-mono text-[#2d5a3d] cursor-pointer hover:bg-[#e0efe0] transition break-all">
-                {TOKEN_CONTRACT.slice(0, 20)}...
+            {TOKEN_CONTRACT.length > 0 ? (
+              <>
+                <div className="mb-4">
+                  <div className="text-xs text-gray-500 mb-1">Contract</div>
+                  <div onClick={() => copyContract(TOKEN_CONTRACT)} className="bg-[#f0f7f1] rounded-lg p-2 text-xs font-mono text-[#2d5a3d] cursor-pointer hover:bg-[#e0efe0] transition break-all">
+                    {TOKEN_CONTRACT.slice(0, 20)}...
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-[#f0f7f1] rounded-lg p-2 text-center">
+                    <div className="text-xs text-gray-500">Price</div>
+                    <div className="font-bold text-[#2d5a3d]">${TOKEN_PRICE}</div>
+                  </div>
+                  <div className="bg-[#f0f7f1] rounded-lg p-2 text-center">
+                    <div className="text-xs text-gray-500">MCap</div>
+                    <div className="font-bold text-[#2d5a3d]">${(TOKEN_MCAP / 1000).toFixed(0)}K</div>
+                  </div>
+                </div>
+                <a href={`https://pump.fun/${TOKEN_CONTRACT}`} target="_blank" className="block mt-4 bg-[#2d5a3d] text-white text-center py-2 rounded-lg text-sm font-medium hover:bg-[#4a8f5c] transition">
+                  Buy on pump.fun
+                </a>
+              </>
+            ) : (
+              <div className="text-center py-4">
+                <div className="text-4xl mb-3">🚀</div>
+                <div className="font-bold text-[#2d5a3d] mb-1">Coming Soon</div>
+                <div className="text-xs text-gray-500">Token launching soon!</div>
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-[#f0f7f1] rounded-lg p-2 text-center">
-                <div className="text-xs text-gray-500">Price</div>
-                <div className="font-bold text-[#2d5a3d]">${TOKEN_PRICE}</div>
-              </div>
-              <div className="bg-[#f0f7f1] rounded-lg p-2 text-center">
-                <div className="text-xs text-gray-500">MCap</div>
-                <div className="font-bold text-[#2d5a3d]">${(TOKEN_MCAP / 1000).toFixed(0)}K</div>
-              </div>
-            </div>
-            <a href={`https://pump.fun/${TOKEN_CONTRACT}`} target="_blank" className="block mt-4 bg-[#2d5a3d] text-white text-center py-2 rounded-lg text-sm font-medium hover:bg-[#4a8f5c] transition">
-              Buy on pump.fun
-            </a>
+            )}
           </div>
         </div>
       )}
