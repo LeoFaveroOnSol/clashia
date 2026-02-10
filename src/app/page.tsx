@@ -57,7 +57,7 @@ interface Prediction {
 }
 
 // TODO: Replace with real contract when launched
-const TOKEN_CONTRACT: string = 'CLASHxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
+const TOKEN_CONTRACT: string = '2UDCBYLrpnrS9ZwEeHXMYMmHTWk316QcTSDuspwUpump';
 const TOKEN_MCAP: number = 0; // 0 = show ---
 const TOKEN_PRICE: number = 0; // 0 = show ---
 
