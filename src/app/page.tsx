@@ -56,10 +56,13 @@ interface Prediction {
   createdAt: string;
 }
 
-// TODO: Replace with real contract when launched
-const TOKEN_CONTRACT: string = '2UDCBYLrpnrS9...pump';
-const TOKEN_MCAP: number = 0; // 0 = show ---
-const TOKEN_PRICE: number = 0; // 0 = show ---
+// $CLASHAI Token - LIVE
+const TOKEN_CONTRACT: string = '8prgMW875TUV1pqJgGdier376YD9gFPzF2rEiDfSpump';
+
+interface TokenData {
+  price: number;
+  mcap: number;
+}
 
 function formatMcap(mcap: number): string {
   if (mcap >= 1000000) return `$${(mcap / 1000000).toFixed(2)}M`;
@@ -89,6 +92,7 @@ export default function Home() {
   // Real data states
   const [callsData, setCallsData] = useState<CallsData | null>(null);
   const [predictions, setPredictions] = useState<Prediction[]>([]);
+  const [tokenData, setTokenData] = useState<TokenData>({ price: 0, mcap: 0 });
   const [loading, setLoading] = useState(true);
   const [nextCallIn, setNextCallIn] = useState(120);
 
@@ -117,9 +121,33 @@ export default function Home() {
       }
     };
 
+    // Fetch $CLASHAI token price from DexScreener
+    const fetchTokenPrice = async () => {
+      try {
+        const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${TOKEN_CONTRACT}`);
+        if (res.ok) {
+          const data = await res.json();
+          const pair = data.pairs?.[0];
+          if (pair) {
+            setTokenData({
+              price: parseFloat(pair.priceUsd || '0'),
+              mcap: parseFloat(pair.marketCap || pair.fdv || '0')
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching token price:', err);
+      }
+    };
+
     fetchData();
+    fetchTokenPrice();
     const interval = setInterval(fetchData, 30000); // Refresh every 30s
-    return () => clearInterval(interval);
+    const tokenInterval = setInterval(fetchTokenPrice, 15000); // Token price every 15s
+    return () => {
+      clearInterval(interval);
+      clearInterval(tokenInterval);
+    };
   }, []);
 
   // Countdown timer for next call - based on real last call time
@@ -174,17 +202,21 @@ export default function Home() {
               <div className="mb-4">
                 <div className="text-xs text-gray-500 mb-1">Contract</div>
                 <div onClick={() => copyContract(TOKEN_CONTRACT)} className="bg-[#f0f7f1] rounded-lg p-2 text-xs font-mono text-[#2d5a3d] cursor-pointer hover:bg-[#e0efe0] transition break-all">
-                  {TOKEN_CONTRACT.slice(0, 20)}...
+                  {TOKEN_CONTRACT.slice(0, 6)}...{TOKEN_CONTRACT.slice(-4)}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-[#f0f7f1] rounded-lg p-2 text-center">
                   <div className="text-xs text-gray-500">Price</div>
-                  <div className="font-bold text-[#2d5a3d]">{TOKEN_PRICE > 0 ? `$${TOKEN_PRICE}` : '---'}</div>
+                  <div className="font-bold text-[#2d5a3d]">
+                    {tokenData.price > 0 ? `$${tokenData.price < 0.001 ? tokenData.price.toExponential(2) : tokenData.price.toFixed(6)}` : '---'}
+                  </div>
                 </div>
                 <div className="bg-[#f0f7f1] rounded-lg p-2 text-center">
                   <div className="text-xs text-gray-500">MCap</div>
-                  <div className="font-bold text-[#2d5a3d]">{TOKEN_MCAP > 0 ? `$${(TOKEN_MCAP / 1000).toFixed(0)}K` : '---'}</div>
+                  <div className="font-bold text-[#2d5a3d]">
+                    {tokenData.mcap > 0 ? `$${tokenData.mcap >= 1000000 ? (tokenData.mcap / 1000000).toFixed(2) + 'M' : (tokenData.mcap / 1000).toFixed(1) + 'K'}` : '---'}
+                  </div>
                 </div>
               </div>
               <a href={`https://pump.fun/coin/2UDCBYLrpnrS9ZwEeHXMYMmHTWk316QcTSDuspwUpump`} target="_blank" className="block mt-4 bg-[#2d5a3d] text-white text-center py-2 rounded-lg text-sm font-medium hover:bg-[#4a8f5c] transition">
