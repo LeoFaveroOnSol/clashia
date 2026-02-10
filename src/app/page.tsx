@@ -57,7 +57,7 @@ interface Prediction {
 }
 
 // TODO: Replace with real contract when launched
-const TOKEN_CONTRACT: string = '2UDCBYLrpnrS9ZwEeHXMYMmHTWk316QcTSDuspwUpump';
+const TOKEN_CONTRACT: string = '2UDCBYLrpnrS9...pump';
 const TOKEN_MCAP: number = 0; // 0 = show ---
 const TOKEN_PRICE: number = 0; // 0 = show ---
 
@@ -187,7 +187,7 @@ export default function Home() {
                   <div className="font-bold text-[#2d5a3d]">{TOKEN_MCAP > 0 ? `$${(TOKEN_MCAP / 1000).toFixed(0)}K` : '---'}</div>
                 </div>
               </div>
-              <a href={`https://pump.fun/${TOKEN_CONTRACT}`} target="_blank" className="block mt-4 bg-[#2d5a3d] text-white text-center py-2 rounded-lg text-sm font-medium hover:bg-[#4a8f5c] transition">
+              <a href={`https://pump.fun/coin/2UDCBYLrpnrS9ZwEeHXMYMmHTWk316QcTSDuspwUpump`} target="_blank" className="block mt-4 bg-[#2d5a3d] text-white text-center py-2 rounded-lg text-sm font-medium hover:bg-[#4a8f5c] transition">
                 Buy on pump.fun
               </a>
             </>
