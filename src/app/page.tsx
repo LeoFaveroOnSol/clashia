@@ -96,21 +96,19 @@ function XPWindow({ title, icon, onClose, onMinimize, children, style = {} }: {
 }
 
 // Desktop Icon Component
-function DesktopIcon({ icon, label, onClick, selected }: {
+function DesktopIcon({ icon, label, onClick }: {
   icon: string;
   label: string;
   onClick: () => void;
-  selected?: boolean;
 }) {
   return (
     <button 
       onClick={onClick}
-      onDoubleClick={onClick}
-      className={`flex flex-col items-center p-2 rounded hover:bg-blue-500/30 ${selected ? 'bg-blue-500/30' : ''}`}
-      style={{ width: 80 }}
+      className="flex flex-col items-center p-2 rounded hover:bg-white/20 active:bg-white/30 transition-colors"
+      style={{ width: 75, background: 'transparent' }}
     >
-      <span className="text-4xl drop-shadow-lg">{icon}</span>
-      <span className="text-white text-xs text-center mt-1 drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
+      <div className="text-4xl" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}>{icon}</div>
+      <span className="text-white text-[11px] text-center mt-1 px-1" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.9)' }}>
         {label}
       </span>
     </button>
@@ -214,7 +212,7 @@ export default function Home() {
       <div className="fixed inset-0 bg-gradient-to-b from-[#245edb] via-[#3a93ff] to-[#2d9b2d]" />
       
       {/* Desktop Icons - Left Side */}
-      <div className="fixed left-2 top-2 z-10 flex flex-col gap-1">
+      <div className="fixed left-3 top-12 z-10 flex flex-col gap-2">
         <DesktopIcon icon="⚔️" label="ClashAI" onClick={() => openWindow('ai')} />
         <DesktopIcon icon="📊" label="Calls" onClick={() => openWindow('calls')} />
         <DesktopIcon icon="🔮" label="Predictions" onClick={() => openWindow('predictions')} />
@@ -496,42 +494,47 @@ export default function Home() {
       )}
 
       {/* Taskbar */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 xp-taskbar h-10">
-        <button className="xp-start-button h-full flex items-center gap-2 px-4">
-          <span>🪟</span> <span className="font-bold">Start</span>
-        </button>
-        
-        <div className="flex-1 flex items-center gap-1 px-2 h-full">
-          {windows.ai && (
-            <button onClick={() => toggleWindow('ai')} className="xp-button h-7 text-xs flex items-center gap-1 min-w-24">
-              ⚔️ ClashAI
-            </button>
-          )}
-          {windows.calls && (
-            <button onClick={() => toggleWindow('calls')} className="xp-button h-7 text-xs flex items-center gap-1">
-              📊 Calls
-            </button>
-          )}
-          {windows.predictions && (
-            <button onClick={() => toggleWindow('predictions')} className="xp-button h-7 text-xs flex items-center gap-1">
-              🔮 Predictions
-            </button>
-          )}
-          {windows.balance && (
-            <button onClick={() => toggleWindow('balance')} className="xp-button h-7 text-xs flex items-center gap-1">
-              💰 Balance
-            </button>
-          )}
-          {windows.docs && (
-            <button onClick={() => toggleWindow('docs')} className="xp-button h-7 text-xs flex items-center gap-1">
-              📁 Docs
-            </button>
-          )}
-        </div>
+      <div className="fixed bottom-0 left-0 right-0 z-50 h-[30px]" style={{ background: 'linear-gradient(to bottom, #3168d5 0%, #4993e6 3%, #2157d7 97%, #1941a5 100%)' }}>
+        <div className="flex items-center h-full">
+          {/* Start Button */}
+          <button className="h-full px-3 flex items-center gap-2 text-white font-bold text-sm" style={{ background: 'linear-gradient(to bottom, #3c9c30 0%, #2d8016 100%)', borderRadius: '0 8px 8px 0' }}>
+            <span>🪟</span> Start
+          </button>
+          
+          {/* Open Windows */}
+          <div className="flex-1 flex items-center gap-1 px-2 h-full">
+            {windows.ai && (
+              <button onClick={() => toggleWindow('ai')} className="h-6 px-2 text-xs flex items-center gap-1 bg-[#1e52b7] text-white border border-[#0c3c8c] rounded">
+                ⚔️ ClashAI
+              </button>
+            )}
+            {windows.calls && (
+              <button onClick={() => toggleWindow('calls')} className="h-6 px-2 text-xs flex items-center gap-1 bg-[#3168d5] text-white border border-[#0c3c8c] rounded">
+                📊 Calls
+              </button>
+            )}
+            {windows.predictions && (
+              <button onClick={() => toggleWindow('predictions')} className="h-6 px-2 text-xs flex items-center gap-1 bg-[#3168d5] text-white border border-[#0c3c8c] rounded">
+                🔮 Predicts
+              </button>
+            )}
+            {windows.balance && (
+              <button onClick={() => toggleWindow('balance')} className="h-6 px-2 text-xs flex items-center gap-1 bg-[#3168d5] text-white border border-[#0c3c8c] rounded">
+                💰 Balance
+              </button>
+            )}
+            {windows.docs && (
+              <button onClick={() => toggleWindow('docs')} className="h-6 px-2 text-xs flex items-center gap-1 bg-[#3168d5] text-white border border-[#0c3c8c] rounded">
+                📁 Docs
+              </button>
+            )}
+          </div>
 
-        <div className="flex items-center gap-3 px-3 h-full bg-[#0f3c8c] text-white text-xs">
-          <span>🔊</span>
-          <span>{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+          {/* System Tray */}
+          <div className="flex items-center gap-2 px-3 h-full text-white text-xs" style={{ background: 'linear-gradient(to bottom, #0f3c9c 0%, #1854c5 100%)' }}>
+            <span>🔊</span>
+            <span>{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+          </div>
         </div>
       </div>
     </div>
