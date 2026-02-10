@@ -89,6 +89,10 @@ export default function Home() {
   const opusTotal = mockOpusPicks.reduce((sum, p) => sum + p.multiplier, 0) / mockOpusPicks.length;
   const codexTotal = mockCodexPicks.reduce((sum, p) => sum + p.multiplier, 0) / mockCodexPicks.length;
 
+  // Calculate total score (sum of all multipliers)
+  const opusScore = opusHistory.reduce((sum, h) => sum + h.multiplier, 0);
+  const codexScore = codexHistory.reduce((sum, h) => sum + h.multiplier, 0);
+
   return (
     <div className="min-h-screen bg-[#d4e8d1] pt-20">
       
@@ -437,6 +441,98 @@ export default function Home() {
                 ))}
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Vintage TV - Score Total */}
+      <div className="fixed bottom-4 left-4 z-50">
+        <div className="relative">
+          {/* TV Frame */}
+          <div className="bg-gradient-to-b from-[#8B4513] via-[#A0522D] to-[#654321] p-3 rounded-2xl shadow-2xl border-4 border-[#5D3A1A]">
+            {/* Wood grain texture overlay */}
+            <div className="absolute inset-0 opacity-20 rounded-2xl" style={{
+              backgroundImage: `repeating-linear-gradient(
+                90deg,
+                transparent,
+                transparent 2px,
+                rgba(0,0,0,0.1) 2px,
+                rgba(0,0,0,0.1) 4px
+              )`
+            }}></div>
+            
+            {/* Screen bezel */}
+            <div className="bg-[#1a1a1a] p-2 rounded-xl">
+              {/* CRT Screen with scanlines */}
+              <div className="relative bg-[#0a0a0a] rounded-lg overflow-hidden" style={{
+                boxShadow: 'inset 0 0 30px rgba(0,255,0,0.1), inset 0 0 60px rgba(0,0,0,0.8)'
+              }}>
+                {/* Scanlines overlay */}
+                <div className="absolute inset-0 pointer-events-none opacity-10" style={{
+                  backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.8) 2px, rgba(0,0,0,0.8) 4px)'
+                }}></div>
+                
+                {/* Screen glow */}
+                <div className="absolute inset-0 pointer-events-none" style={{
+                  background: 'radial-gradient(ellipse at center, rgba(100,255,100,0.05) 0%, transparent 70%)'
+                }}></div>
+
+                {/* Content */}
+                <div className="px-4 py-3 min-w-[180px]">
+                  <div className="text-center mb-2">
+                    <span className="text-[#00ff00] font-mono text-[10px] tracking-widest opacity-80">TOTAL SCORE</span>
+                  </div>
+                  
+                  {/* Opus Score */}
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[#f0b866] font-mono text-xs font-bold">OPUS</span>
+                    <span className="text-[#f0b866] font-mono text-lg font-bold tracking-wider" style={{
+                      textShadow: '0 0 10px rgba(240,184,102,0.8)'
+                    }}>
+                      {opusScore.toFixed(1)}
+                    </span>
+                  </div>
+                  
+                  {/* VS divider */}
+                  <div className="flex items-center gap-2 my-1">
+                    <div className="flex-1 h-px bg-[#333]"></div>
+                    <span className="text-[#00ff00] font-mono text-[10px]">VS</span>
+                    <div className="flex-1 h-px bg-[#333]"></div>
+                  </div>
+                  
+                  {/* Codex Score */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-[#66b8f0] font-mono text-xs font-bold">CODEX</span>
+                    <span className="text-[#66b8f0] font-mono text-lg font-bold tracking-wider" style={{
+                      textShadow: '0 0 10px rgba(102,184,240,0.8)'
+                    }}>
+                      {codexScore.toFixed(1)}
+                    </span>
+                  </div>
+
+                  {/* Winner indicator */}
+                  <div className="mt-2 text-center">
+                    <span className={`font-mono text-[10px] tracking-wider ${opusScore > codexScore ? 'text-[#f0b866]' : 'text-[#66b8f0]'}`} style={{
+                      textShadow: opusScore > codexScore ? '0 0 8px rgba(240,184,102,0.6)' : '0 0 8px rgba(102,184,240,0.6)'
+                    }}>
+                      {opusScore > codexScore ? '▲ OPUS LEADS' : codexScore > opusScore ? '▲ CODEX LEADS' : 'TIED'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* TV Controls */}
+            <div className="flex justify-center gap-3 mt-2">
+              <div className="w-4 h-4 rounded-full bg-gradient-to-b from-[#444] to-[#222] border border-[#555]"></div>
+              <div className="w-4 h-4 rounded-full bg-gradient-to-b from-[#444] to-[#222] border border-[#555]"></div>
+            </div>
+          </div>
+          
+          {/* TV Legs */}
+          <div className="flex justify-center gap-16 -mt-1">
+            <div className="w-3 h-4 bg-gradient-to-b from-[#654321] to-[#3d2817] rounded-b-sm"></div>
+            <div className="w-3 h-4 bg-gradient-to-b from-[#654321] to-[#3d2817] rounded-b-sm"></div>
           </div>
         </div>
       </div>
