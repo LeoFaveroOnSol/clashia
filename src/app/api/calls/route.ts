@@ -36,20 +36,31 @@ export async function GET() {
     const opusCalls = calls.filter((c: any) => c.ai_name === 'opus');
     const codexCalls = calls.filter((c: any) => c.ai_name === 'codex');
 
-    // Calculate stats
+    // Calculate stats with simulated balance
+    const STARTING_BALANCE = 1000;
     const calculateStats = (callList: any[]) => {
-      if (callList.length === 0) return { total: 0, avg: 0, median: 0, best: 0, score: 0 };
+      if (callList.length === 0) return { total: 0, avg: 0, median: 0, best: 0, score: 0, balance: STARTING_BALANCE, pnl: 0, pnlPercent: 0 };
       
       const multipliers = callList.map(c => parseFloat(c.current_multiplier) || 1);
       const sorted = [...multipliers].sort((a, b) => b - a);
       const sum = multipliers.reduce((a, b) => a + b, 0);
+      
+      // Simulate balance: each call uses equal portion of initial balance
+      // Final balance = sum of (initial_per_call * multiplier) for each call
+      const perCall = STARTING_BALANCE / callList.length;
+      const balance = multipliers.reduce((acc, mult) => acc + (perCall * mult), 0);
+      const pnl = balance - STARTING_BALANCE;
+      const pnlPercent = (pnl / STARTING_BALANCE) * 100;
       
       return {
         total: callList.length,
         avg: sum / callList.length,
         median: sorted[Math.floor(sorted.length / 2)] || 0,
         best: sorted[0] || 0,
-        score: sum
+        score: sum,
+        balance: Math.round(balance * 100) / 100,
+        pnl: Math.round(pnl * 100) / 100,
+        pnlPercent: Math.round(pnlPercent * 100) / 100
       };
     };
 

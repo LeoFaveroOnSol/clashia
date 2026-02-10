@@ -21,6 +21,9 @@ interface AIStats {
   median: number;
   best: number;
   score: number;
+  balance: number;
+  pnl: number;
+  pnlPercent: number;
 }
 
 interface AIData {
@@ -79,6 +82,7 @@ export default function Home() {
   const [showTokenPanel, setShowTokenPanel] = useState(true);
   const [showHowItWorks, setShowHowItWorks] = useState(true);
   const [showPredictions, setShowPredictions] = useState(false);
+  const [showBalance, setShowBalance] = useState(false);
   const [activeTab, setActiveTab] = useState<'opus' | 'codex'>('opus');
   
   // Real data states
@@ -144,8 +148,8 @@ export default function Home() {
   };
 
   // Use real data or fallback
-  const opusStats = callsData?.opus.stats || { total: 0, avg: 0, median: 0, best: 0, score: 0 };
-  const codexStats = callsData?.codex.stats || { total: 0, avg: 0, median: 0, best: 0, score: 0 };
+  const opusStats = callsData?.opus.stats || { total: 0, avg: 0, median: 0, best: 0, score: 0, balance: 1000, pnl: 0, pnlPercent: 0 };
+  const codexStats = callsData?.codex.stats || { total: 0, avg: 0, median: 0, best: 0, score: 0, balance: 1000, pnl: 0, pnlPercent: 0 };
   const opusPicks = callsData?.opus.recent || [];
   const codexPicks = callsData?.codex.recent || [];
   const opusHistory = callsData?.opus.history || [];
@@ -325,6 +329,90 @@ export default function Home() {
         </div>
       )}
 
+      {/* Balance Modal */}
+      {showBalance && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowBalance(false)}>
+          <div className="bg-white rounded-2xl border-4 border-[#2d5a3d] shadow-2xl max-w-lg w-full" onClick={e => e.stopPropagation()}>
+            <div className="bg-[#2d5a3d] px-6 py-4 flex items-center justify-between">
+              <span className="text-white font-bold">💰 AI Balances</span>
+              <button onClick={() => setShowBalance(false)} className="text-[#a8d4b0] hover:text-white text-xl">×</button>
+            </div>
+            <div className="p-6">
+              <p className="text-gray-500 text-sm mb-6 text-center">
+                Each AI started with <span className="font-bold text-[#2d5a3d]">$1,000</span>. Performance based on real token picks.
+              </p>
+              
+              <div className="grid grid-cols-2 gap-4">
+                {/* Opus Balance */}
+                <div className="bg-[#fffcf5] rounded-xl p-4 border-2 border-[#f0b866]">
+                  <div className="text-center mb-3">
+                    <div className="text-[#8a6830] font-bold text-lg">Claude Opus</div>
+                    <div className="text-gray-500 text-xs">{opusStats.total} calls</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-[#2d5a3d] mb-1">
+                      ${opusStats.balance.toLocaleString()}
+                    </div>
+                    <div className={`text-sm font-medium ${opusStats.pnl >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                      {opusStats.pnl >= 0 ? '+' : ''}{opusStats.pnl.toLocaleString()} ({opusStats.pnlPercent >= 0 ? '+' : ''}{opusStats.pnlPercent}%)
+                    </div>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-[#f0b866]/30">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-500">Avg mult.</span>
+                      <span className="font-medium text-[#2d5a3d]">{opusStats.avg.toFixed(2)}x</span>
+                    </div>
+                    <div className="flex justify-between text-xs mt-1">
+                      <span className="text-gray-500">Best</span>
+                      <span className="font-medium text-[#f0b866]">{opusStats.best.toFixed(2)}x</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Codex Balance */}
+                <div className="bg-[#f5faff] rounded-xl p-4 border-2 border-[#66b8f0]">
+                  <div className="text-center mb-3">
+                    <div className="text-[#306088] font-bold text-lg">GPT Codex</div>
+                    <div className="text-gray-500 text-xs">{codexStats.total} calls</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-[#2d5a3d] mb-1">
+                      ${codexStats.balance.toLocaleString()}
+                    </div>
+                    <div className={`text-sm font-medium ${codexStats.pnl >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                      {codexStats.pnl >= 0 ? '+' : ''}{codexStats.pnl.toLocaleString()} ({codexStats.pnlPercent >= 0 ? '+' : ''}{codexStats.pnlPercent}%)
+                    </div>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-[#66b8f0]/30">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-500">Avg mult.</span>
+                      <span className="font-medium text-[#2d5a3d]">{codexStats.avg.toFixed(2)}x</span>
+                    </div>
+                    <div className="flex justify-between text-xs mt-1">
+                      <span className="text-gray-500">Best</span>
+                      <span className="font-medium text-[#66b8f0]">{codexStats.best.toFixed(2)}x</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Winner indicator */}
+              <div className="mt-6 text-center">
+                {opusStats.balance !== codexStats.balance && (
+                  <div className={`inline-block px-4 py-2 rounded-full text-sm font-medium ${
+                    opusStats.balance > codexStats.balance 
+                      ? 'bg-[#fffcf5] text-[#8a6830] border-2 border-[#f0b866]' 
+                      : 'bg-[#f5faff] text-[#306088] border-2 border-[#66b8f0]'
+                  }`}>
+                    🏆 {opusStats.balance > codexStats.balance ? 'Opus' : 'Codex'} is winning by ${Math.abs(opusStats.balance - codexStats.balance).toFixed(2)}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Toggle buttons */}
       {!showTokenPanel && (
         <button onClick={() => setShowTokenPanel(true)} className="fixed left-4 top-24 bg-[#2d5a3d] text-white px-3 py-2 rounded-lg text-sm font-medium z-40">$CLASH</button>
@@ -352,6 +440,9 @@ export default function Home() {
                 <div className="text-[#a8d4b0] text-xs">Next call in</div>
                 <div className="text-white font-mono font-bold">{formatCountdown(nextCallIn)}</div>
               </div>
+              <button onClick={() => setShowBalance(true)} className="bg-[#1a3d28] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#2d5a3d] transition border border-[#4a8f5c]">
+                💰 Balance
+              </button>
               <button onClick={() => setShowPredictions(true)} className="bg-[#4a8f5c] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5aa06c] transition">
                 Predictions
               </button>
