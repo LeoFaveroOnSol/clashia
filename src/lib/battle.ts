@@ -117,12 +117,12 @@ async function ensureActiveRound(): Promise<{ id: number }> {
   return result[0] as { id: number };
 }
 
-// Get recent calls to avoid duplicates (last 10 minutes)
+// Get recent calls to avoid duplicates (last 5 minutes)
 async function getRecentCalls(roundId: number): Promise<string[]> {
   const result = await sql`
     SELECT DISTINCT token_address FROM calls 
     WHERE round_id = ${roundId} 
-    AND called_at > NOW() - INTERVAL '10 minutes'
+    AND called_at > NOW() - INTERVAL '5 minutes'
   `;
   return result.map((r: any) => r.token_address);
 }
@@ -194,10 +194,9 @@ export async function makeNewCalls() {
     codex: codexToken.symbol
   });
   
-  // Generate a new prediction based on the picked tokens
+  // Generate a new verifiable crypto prediction
   try {
-    const tokenForPrediction = Math.random() > 0.5 ? opusToken.symbol : codexToken.symbol;
-    await generatePrediction('$' + tokenForPrediction);
+    await generatePrediction();
   } catch (err) {
     console.error('[Battle] Error generating prediction:', err);
   }
