@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { runBattleLoop, startNewRound, updatePrices, checkAndEndRound } from '@/lib/battle';
+import { runBattleLoop, makeNewCalls, updateAllPrices } from '@/lib/battle';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60; // 60 seconds max for Vercel
+export const maxDuration = 60;
 
-// Cron endpoint - called periodically to manage battles
+// Cron endpoint - called every 2 minutes to make new calls
 export async function GET(request: NextRequest) {
-  // Verify cron secret (optional but recommended)
   const authHeader = request.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
   
@@ -17,19 +16,22 @@ export async function GET(request: NextRequest) {
   try {
     const action = request.nextUrl.searchParams.get('action');
     
-    if (action === 'start') {
-      // Force start a new round
-      const result = await startNewRound(24);
+    if (action === 'call') {
+      // Force make new calls
+      const result = await makeNewCalls();
       return NextResponse.json({ 
         success: true, 
-        action: 'start',
-        result 
+        action: 'call',
+        result: result ? {
+          opus: result.opusCall?.token_symbol,
+          codex: result.codexCall?.token_symbol
+        } : null
       });
     }
     
     if (action === 'update') {
       // Just update prices
-      const updated = await updatePrices();
+      const updated = await updateAllPrices();
       return NextResponse.json({ 
         success: true, 
         action: 'update',
@@ -37,17 +39,7 @@ export async function GET(request: NextRequest) {
       });
     }
     
-    if (action === 'end') {
-      // Force check and end round
-      const result = await checkAndEndRound();
-      return NextResponse.json({ 
-        success: true, 
-        action: 'end',
-        result 
-      });
-    }
-    
-    // Default: run full battle loop
+    // Default: run full battle loop (make calls + update prices)
     await runBattleLoop();
     
     return NextResponse.json({ 
@@ -64,7 +56,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Also allow POST for flexibility
 export async function POST(request: NextRequest) {
   return GET(request);
 }

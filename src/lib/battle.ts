@@ -1,6 +1,6 @@
-// AI Battle Logic
+// AI Battle Logic - Calls every 2 minutes
 import { getTrendingSolana, TrendingPool, getTokenPrice } from './api';
-import { sql, createRound, createCall, updateCallPrice, completeRound, getActiveRound, getRoundCalls } from './db';
+import { sql, createCall, updateCallPrice, getActiveRound, getRoundCalls } from './db';
 
 // AI Personalities - different strategies
 const AI_STRATEGIES = {
@@ -102,39 +102,66 @@ function selectToken(ai: 'opus' | 'codex', tokens: TrendingPool[], exclude: stri
   return scored[0]?.token || null;
 }
 
-// Start a new battle round
-export async function startNewRound(durationHours = 24) {
-  // Check if there's already an active round
+// Get or create active round
+async function ensureActiveRound(): Promise<{ id: number }> {
   const active = await getActiveRound();
-  if (active) {
-    console.log('Round already active:', active.id);
-    return null;
-  }
+  if (active) return active;
+  
+  // Create a continuous round (no end time - runs forever)
+  const result = await sql`
+    INSERT INTO rounds (status, ends_at)
+    VALUES ('active', NULL)
+    RETURNING *
+  `;
+  return result[0] as { id: number };
+}
+
+// Get recent calls to avoid duplicates (last 10 minutes)
+async function getRecentCalls(roundId: number): Promise<string[]> {
+  const result = await sql`
+    SELECT DISTINCT token_address FROM calls 
+    WHERE round_id = ${roundId} 
+    AND called_at > NOW() - INTERVAL '10 minutes'
+  `;
+  return result.map((r: any) => r.token_address);
+}
+
+// Make a new call for each AI (called every 2 minutes)
+export async function makeNewCalls() {
+  console.log('[Battle] Making new calls...');
+  
+  // Ensure we have an active round
+  const round = await ensureActiveRound();
+  console.log('[Battle] Active round:', round.id);
+  
+  // Get recent calls to exclude (avoid picking same tokens)
+  const recentCalls = await getRecentCalls(round.id);
+  console.log('[Battle] Recent calls to exclude:', recentCalls.length);
   
   // Fetch trending tokens
   const trending = await getTrendingSolana();
+  console.log('[Battle] Trending tokens found:', trending.length);
+  
   if (trending.length < 2) {
-    console.error('Not enough trending tokens');
+    console.error('[Battle] Not enough trending tokens');
     return null;
   }
-  
-  // Create round
-  const endsAt = new Date(Date.now() + durationHours * 60 * 60 * 1000);
-  const round = await createRound(endsAt);
   
   // Opus picks first
-  const opusToken = selectToken('opus', trending);
+  const opusToken = selectToken('opus', trending, recentCalls);
   if (!opusToken) {
-    console.error('Opus could not select a token');
+    console.error('[Battle] Opus could not select a token');
     return null;
   }
+  console.log('[Battle] Opus picked:', opusToken.symbol, 'mcap:', opusToken.mcap);
   
-  // Codex picks (excluding Opus's pick)
-  const codexToken = selectToken('codex', trending, [opusToken.address]);
+  // Codex picks (excluding Opus's pick and recent calls)
+  const codexToken = selectToken('codex', trending, [...recentCalls, opusToken.address]);
   if (!codexToken) {
-    console.error('Codex could not select a token');
+    console.error('[Battle] Codex could not select a token');
     return null;
   }
+  console.log('[Battle] Codex picked:', codexToken.symbol, 'mcap:', codexToken.mcap);
   
   // Create calls
   const opusCall = await createCall({
@@ -161,89 +188,100 @@ export async function startNewRound(durationHours = 24) {
     confidence: Math.floor(55 + Math.random() * 35)
   });
   
-  console.log('New round started:', {
-    roundId: round.id,
+  console.log('[Battle] New calls created:', {
     opus: opusToken.symbol,
-    codex: codexToken.symbol,
-    endsAt
+    codex: codexToken.symbol
   });
   
   return { round, opusCall, codexCall };
 }
 
-// Update prices for active round
-export async function updatePrices() {
+// Update prices for all calls in active round
+export async function updateAllPrices() {
   const round = await getActiveRound();
-  if (!round) return null;
+  if (!round) {
+    console.log('[Battle] No active round');
+    return 0;
+  }
   
   const calls = await getRoundCalls(round.id);
+  console.log('[Battle] Updating prices for', calls.length, 'calls');
   
+  let updated = 0;
   for (const call of calls) {
-    const price = await getTokenPrice(call.token_address);
-    if (price) {
-      await updateCallPrice(call.id, price.mcap, price.mcap);
+    try {
+      const price = await getTokenPrice(call.token_address);
+      if (price && price.mcap > 0) {
+        await updateCallPrice(call.id, price.mcap, price.mcap);
+        updated++;
+      }
+    } catch (err) {
+      console.error('[Battle] Error updating price for', call.token_symbol, err);
     }
   }
   
-  return calls.length;
+  console.log('[Battle] Updated', updated, 'prices');
+  return updated;
 }
 
-// Check if round should end and determine winner
-export async function checkAndEndRound() {
-  const round = await getActiveRound();
-  if (!round || !round.ends_at) return null;
-  
-  const endsAt = new Date(round.ends_at);
-  if (new Date() < endsAt) return null; // Not time yet
-  
-  // Update final prices
-  await updatePrices();
-  
-  // Get final calls
-  const calls = await getRoundCalls(round.id);
-  const opusCall = calls.find(c => c.ai_name === 'opus');
-  const codexCall = calls.find(c => c.ai_name === 'codex');
-  
-  if (!opusCall || !codexCall) return null;
-  
-  // Determine winner based on ATH multiplier
-  let winner: 'opus' | 'codex' | 'draw';
-  if (opusCall.ath_multiplier > codexCall.ath_multiplier) {
-    winner = 'opus';
-  } else if (codexCall.ath_multiplier > opusCall.ath_multiplier) {
-    winner = 'codex';
-  } else {
-    winner = 'draw';
-  }
-  
-  // Complete round
-  await completeRound(round.id, winner);
-  
-  console.log('Round completed:', {
-    roundId: round.id,
-    winner,
-    opusMultiplier: opusCall.ath_multiplier,
-    codexMultiplier: codexCall.ath_multiplier
-  });
-  
-  return { round, winner, opusCall, codexCall };
+// Get all calls with performance data
+export async function getAllCalls(limit = 50) {
+  const result = await sql`
+    SELECT 
+      c.*,
+      CASE 
+        WHEN c.entry_mcap > 0 THEN ROUND((c.current_mcap / c.entry_mcap)::numeric, 4)
+        ELSE 1
+      END as current_multiplier,
+      CASE 
+        WHEN c.entry_mcap > 0 THEN ROUND((c.ath_mcap / c.entry_mcap)::numeric, 4)
+        ELSE 1
+      END as ath_multiplier
+    FROM calls c
+    ORDER BY c.called_at DESC
+    LIMIT ${limit}
+  `;
+  return result;
 }
 
-// Main battle loop (for cron)
+// Get stats per AI
+export async function getAIStats() {
+  const result = await sql`
+    SELECT 
+      ai_name,
+      COUNT(*) as total_calls,
+      ROUND(AVG(CASE WHEN entry_mcap > 0 THEN current_mcap / entry_mcap ELSE 1 END)::numeric, 2) as avg_multiplier,
+      ROUND(MAX(CASE WHEN entry_mcap > 0 THEN ath_mcap / entry_mcap ELSE 1 END)::numeric, 2) as best_multiplier,
+      SUM(CASE WHEN current_mcap > entry_mcap THEN 1 ELSE 0 END) as winning_calls
+    FROM calls
+    GROUP BY ai_name
+  `;
+  return result;
+}
+
+// Main battle loop (for cron - called every 2 minutes)
 export async function runBattleLoop() {
-  // Check if current round should end
-  const ended = await checkAndEndRound();
-  if (ended) {
-    console.log('Round ended, winner:', ended.winner);
-  }
+  console.log('[Battle] Running battle loop at', new Date().toISOString());
   
-  // Check if we need to start a new round
-  const active = await getActiveRound();
-  if (!active) {
-    console.log('Starting new round...');
-    await startNewRound(24); // 24 hour rounds
-  }
+  // Make new calls
+  await makeNewCalls();
   
-  // Update prices
-  await updatePrices();
+  // Update all existing prices
+  await updateAllPrices();
+  
+  console.log('[Battle] Battle loop complete');
+}
+
+// Legacy functions for compatibility
+export async function startNewRound(durationHours = 24) {
+  return makeNewCalls();
+}
+
+export async function updatePrices() {
+  return updateAllPrices();
+}
+
+export async function checkAndEndRound() {
+  // No-op - rounds don't end anymore
+  return null;
 }
