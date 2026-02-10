@@ -10,8 +10,6 @@ interface CoinPick {
   currentMcap: number;
   multiplier: number;
   athMultiplier: number;
-  reasoning: string;
-  confidence: number;
   calledAt: string;
 }
 
@@ -41,7 +39,6 @@ interface CallsData {
 interface Prediction {
   id: number;
   question: string;
-  category: string;
   opus: { position: string; confidence: number; reasoning: string; };
   codex: { position: string; confidence: number; reasoning: string; };
   agreement: boolean;
@@ -70,23 +67,23 @@ function timeAgo(date: string): string {
 }
 
 // XP Window Component
-function XPWindow({ title, icon, onClose, children, className = '', style = {} }: {
+function XPWindow({ title, icon, onClose, onMinimize, children, style = {} }: {
   title: string;
   icon?: string;
   onClose?: () => void;
+  onMinimize?: () => void;
   children: React.ReactNode;
-  className?: string;
   style?: React.CSSProperties;
 }) {
   return (
-    <div className={`xp-window ${className}`} style={style}>
+    <div className="xp-window" style={style}>
       <div className="xp-titlebar">
         <div className="xp-titlebar-text">
-          {icon && <span>{icon}</span>}
+          {icon && <span className="mr-1">{icon}</span>}
           {title}
         </div>
         <div className="xp-titlebar-buttons">
-          <button className="xp-btn-minimize">_</button>
+          {onMinimize && <button className="xp-btn-minimize" onClick={onMinimize}>_</button>}
           <button className="xp-btn-maximize">□</button>
           {onClose && <button className="xp-btn-close" onClick={onClose}>×</button>}
         </div>
@@ -98,18 +95,52 @@ function XPWindow({ title, icon, onClose, children, className = '', style = {} }
   );
 }
 
+// Desktop Icon Component
+function DesktopIcon({ icon, label, onClick, selected }: {
+  icon: string;
+  label: string;
+  onClick: () => void;
+  selected?: boolean;
+}) {
+  return (
+    <button 
+      onClick={onClick}
+      onDoubleClick={onClick}
+      className={`flex flex-col items-center p-2 rounded hover:bg-blue-500/30 ${selected ? 'bg-blue-500/30' : ''}`}
+      style={{ width: 80 }}
+    >
+      <span className="text-4xl drop-shadow-lg">{icon}</span>
+      <span className="text-white text-xs text-center mt-1 drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
+        {label}
+      </span>
+    </button>
+  );
+}
+
 export default function Home() {
-  const [showTokenPanel, setShowTokenPanel] = useState(true);
-  const [showHowItWorks, setShowHowItWorks] = useState(true);
-  const [showPredictions, setShowPredictions] = useState(false);
-  const [showBalance, setShowBalance] = useState(false);
-  const [activeTab, setActiveTab] = useState<'opus' | 'codex'>('opus');
-  
+  // Window states
+  const [windows, setWindows] = useState({
+    ai: true,      // AI Battle window - open by default
+    calls: false,
+    predictions: false,
+    docs: false,
+    balance: false,
+  });
+
   const [callsData, setCallsData] = useState<CallsData | null>(null);
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [tokenData, setTokenData] = useState<TokenData>({ price: 0, mcap: 0 });
   const [loading, setLoading] = useState(true);
   const [nextCallIn, setNextCallIn] = useState(120);
+  const [activeTab, setActiveTab] = useState<'opus' | 'codex'>('opus');
+
+  const toggleWindow = (name: keyof typeof windows) => {
+    setWindows(prev => ({ ...prev, [name]: !prev[name] }));
+  };
+
+  const openWindow = (name: keyof typeof windows) => {
+    setWindows(prev => ({ ...prev, [name]: true }));
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -174,354 +205,335 @@ export default function Home() {
   const opusHistory = callsData?.opus.history || [];
   const codexHistory = callsData?.codex.history || [];
 
-  const copyContract = (c: string) => navigator.clipboard.writeText(c);
+  const copyContract = () => navigator.clipboard.writeText(TOKEN_CONTRACT);
   const formatCountdown = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
   return (
-    <div className="min-h-screen p-4 pt-20">
-      {/* Navbar */}
-      <div className="fixed top-0 left-0 right-0 z-50 xp-taskbar">
-        <button className="xp-start-button flex items-center gap-2">
-          <span>⚔️</span> ClashAI
-        </button>
-        <div className="flex-1 flex items-center gap-2 px-2">
-          <a href="/" className="xp-button text-xs">Home</a>
-          <a href="/predict" className="xp-button text-xs">Predictions</a>
-          <a href="/docs" className="xp-button text-xs">Docs</a>
-        </div>
-        <div className="text-white text-xs px-2">
-          {new Date().toLocaleTimeString()}
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Desktop Background - XP Bliss style */}
+      <div className="fixed inset-0 bg-gradient-to-b from-[#245edb] via-[#3a93ff] to-[#2d9b2d]" />
+      
+      {/* Desktop Icons - Left Side */}
+      <div className="fixed left-2 top-2 z-10 flex flex-col gap-1">
+        <DesktopIcon icon="⚔️" label="ClashAI" onClick={() => openWindow('ai')} />
+        <DesktopIcon icon="📊" label="Calls" onClick={() => openWindow('calls')} />
+        <DesktopIcon icon="🔮" label="Predictions" onClick={() => openWindow('predictions')} />
+        <DesktopIcon icon="💰" label="Balance" onClick={() => openWindow('balance')} />
+        <DesktopIcon icon="📁" label="Docs" onClick={() => openWindow('docs')} />
+      </div>
+
+      {/* Floating Contract - Top Center */}
+      <div 
+        onClick={copyContract}
+        className="fixed top-3 left-1/2 -translate-x-1/2 z-50 cursor-pointer hover:scale-105 transition"
+      >
+        <div className="bg-black/80 text-green-400 font-mono text-sm px-4 py-2 rounded-lg border border-green-500/50 shadow-lg shadow-green-500/20">
+          <span className="text-green-300">CA:</span> clash...pump 📋
         </div>
       </div>
 
-      {/* Desktop Icons */}
-      <div className="fixed left-4 top-16 flex flex-col gap-4 z-10">
-        {!showTokenPanel && (
-          <button onClick={() => setShowTokenPanel(true)} className="flex flex-col items-center text-white text-xs hover:bg-white/20 p-2 rounded">
-            <span className="text-3xl">💰</span>
-            <span className="text-shadow">$CLASH</span>
-          </button>
-        )}
-        {!showHowItWorks && (
-          <button onClick={() => setShowHowItWorks(true)} className="flex flex-col items-center text-white text-xs hover:bg-white/20 p-2 rounded">
-            <span className="text-3xl">📁</span>
-            <span className="text-shadow">How It Works</span>
-          </button>
-        )}
-      </div>
-
-      {/* Token Panel Window */}
-      {showTokenPanel && (
-        <div className="fixed left-4 top-24 z-40" style={{ width: 250 }}>
-          <XPWindow title="$CLASH Token" icon="💰" onClose={() => setShowTokenPanel(false)}>
-            <div className="space-y-3">
-              <div>
-                <div className="text-xs text-gray-600 mb-1">Contract</div>
-                <div onClick={() => copyContract(TOKEN_CONTRACT)} className="xp-inset text-xs font-mono cursor-pointer hover:bg-blue-50">
-                  {TOKEN_CONTRACT.slice(0, 6)}...{TOKEN_CONTRACT.slice(-4)}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="xp-panel text-center">
-                  <div className="text-xs text-gray-600">Price</div>
-                  <div className="font-bold text-sm">
-                    {tokenData.price > 0 ? `$${tokenData.price < 0.001 ? tokenData.price.toExponential(2) : tokenData.price.toFixed(6)}` : '---'}
+      {/* AI Battle Window - Main Window */}
+      {windows.ai && (
+        <div className="fixed z-30" style={{ top: 60, right: 20, width: 420 }}>
+          <XPWindow 
+            title="ClashAI - Battle Arena" 
+            icon="⚔️" 
+            onClose={() => toggleWindow('ai')}
+            onMinimize={() => toggleWindow('ai')}
+          >
+            <div className="space-y-4">
+              {/* Score Section */}
+              <div className="xp-panel p-3">
+                <div className="text-center text-xs text-gray-600 mb-2 font-bold">LIVE SCORE</div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center">
+                    <div className="text-3xl">🟠</div>
+                    <div className="font-bold">Claude Opus</div>
+                    <div className="text-2xl font-mono font-bold text-orange-600">{opusStats.score.toFixed(1)}</div>
+                    <div className="text-xs text-gray-500">{opusStats.total} calls</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-3xl">🔵</div>
+                    <div className="font-bold">GPT Codex</div>
+                    <div className="text-2xl font-mono font-bold text-blue-600">{codexStats.score.toFixed(1)}</div>
+                    <div className="text-xs text-gray-500">{codexStats.total} calls</div>
                   </div>
                 </div>
-                <div className="xp-panel text-center">
-                  <div className="text-xs text-gray-600">MCap</div>
-                  <div className="font-bold text-sm">
-                    {tokenData.mcap > 0 ? formatMcap(tokenData.mcap) : '---'}
-                  </div>
-                </div>
-              </div>
-              <a href={`https://pump.fun/${TOKEN_CONTRACT}`} target="_blank" className="xp-button xp-button-primary block text-center text-sm">
-                Buy on pump.fun
-              </a>
-            </div>
-          </XPWindow>
-        </div>
-      )}
-
-      {/* How It Works Window */}
-      {showHowItWorks && (
-        <div className="fixed right-4 top-24 z-40" style={{ width: 300 }}>
-          <XPWindow title="How It Works" icon="📁" onClose={() => setShowHowItWorks(false)}>
-            <div className="space-y-3 text-xs max-h-96 overflow-y-auto">
-              <div className="font-bold text-blue-800">The Competitors:</div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="xp-panel text-center p-2">
-                  <div className="text-2xl">🟠</div>
-                  <div className="font-bold">Claude Opus</div>
-                  <div className="text-gray-500">Anthropic</div>
-                </div>
-                <div className="xp-panel text-center p-2">
-                  <div className="text-2xl">🔵</div>
-                  <div className="font-bold">GPT Codex</div>
-                  <div className="text-gray-500">OpenAI</div>
-                </div>
-              </div>
-              <div className="font-bold text-blue-800">Battle Flow:</div>
-              <ol className="list-decimal list-inside space-y-1 text-gray-700">
-                <li>Every 2 min, fetch trending tokens</li>
-                <li>Both AIs pick their tokens</li>
-                <li>Prices update in real-time</li>
-                <li>Score = sum of all multipliers</li>
-              </ol>
-              <div className="font-bold text-blue-800">Every 5 min:</div>
-              <ul className="list-disc list-inside text-gray-700">
-                <li>🟠 Opus wins → Buyback & Burn 🔥</li>
-                <li>🔵 Codex wins → Airdrop 💰</li>
-              </ul>
-            </div>
-          </XPWindow>
-        </div>
-      )}
-
-      {/* Main Content */}
-      <div className="max-w-4xl mx-auto space-y-4">
-        
-        {/* Header Window */}
-        <XPWindow title="ClashAI - AI vs AI Prediction Battle" icon="⚔️">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-lg font-bold">AI Prediction Battles</div>
-              <div className="text-xs text-gray-600">Live calls every 2 minutes</div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="xp-panel text-center px-3">
-                <div className="text-xs text-gray-600">Next Call</div>
-                <div className="font-mono font-bold">{formatCountdown(nextCallIn)}</div>
-              </div>
-              <button onClick={() => setShowBalance(true)} className="xp-button">💰 Balance</button>
-              <button onClick={() => setShowPredictions(true)} className="xp-button">🔮 Predictions</button>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 mt-2 text-xs text-gray-600">
-            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-            Live • {callsData?.totalCalls || 0} total calls
-          </div>
-        </XPWindow>
-
-        {/* Performance Window */}
-        <XPWindow title="Performance Monitor" icon="📊">
-          <div className="flex border-b border-gray-400 mb-3">
-            <button onClick={() => setActiveTab('opus')} className={`xp-tab ${activeTab === 'opus' ? 'xp-tab-active' : ''}`}>
-              🟠 Opus
-            </button>
-            <button onClick={() => setActiveTab('codex')} className={`xp-tab ${activeTab === 'codex' ? 'xp-tab-active' : ''}`}>
-              🔵 Codex
-            </button>
-          </div>
-
-          <div className="grid grid-cols-4 gap-3 mb-4">
-            {[
-              { label: 'Calls', value: activeTab === 'opus' ? opusStats.total : codexStats.total },
-              { label: 'Median', value: `${(activeTab === 'opus' ? opusStats.median : codexStats.median).toFixed(2)}x` },
-              { label: 'Average', value: `${(activeTab === 'opus' ? opusStats.avg : codexStats.avg).toFixed(2)}x` },
-              { label: 'Best', value: `${(activeTab === 'opus' ? opusStats.best : codexStats.best).toFixed(2)}x` },
-            ].map((stat, i) => (
-              <div key={i} className="xp-panel text-center">
-                <div className="text-xs text-gray-600">{stat.label}</div>
-                <div className="font-bold">{stat.value}</div>
-              </div>
-            ))}
-          </div>
-
-          <div className="xp-inset max-h-48 overflow-y-auto">
-            {(activeTab === 'opus' ? opusHistory : codexHistory).length > 0 ? (
-              <table className="w-full text-xs">
-                <thead className="bg-gray-100 sticky top-0">
-                  <tr>
-                    <th className="text-left p-1">#</th>
-                    <th className="text-left p-1">Token</th>
-                    <th className="text-right p-1">Return</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(activeTab === 'opus' ? opusHistory : codexHistory).map((item, i) => (
-                    <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      <td className="p-1 text-gray-500">{i + 1}</td>
-                      <td className="p-1 font-mono">{item.token}</td>
-                      <td className={`p-1 text-right font-bold ${item.multiplier >= 1 ? 'text-green-600' : 'text-red-600'}`}>
-                        {item.multiplier.toFixed(2)}x
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <div className="text-center py-4 text-gray-500">
-                {loading ? 'Loading...' : 'No calls yet'}
-              </div>
-            )}
-          </div>
-        </XPWindow>
-
-        {/* Recent Picks Window */}
-        <XPWindow title="Recent Picks" icon="🎯">
-          <div className="grid md:grid-cols-2 gap-4">
-            {/* Opus */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-bold">🟠 Opus</span>
-                <span className={`text-xs ${opusPicks.length > 0 ? (opusPicks.reduce((a, p) => a + p.multiplier, 0) / opusPicks.length >= 1 ? 'text-green-600' : 'text-red-600') : ''}`}>
-                  {opusPicks.length > 0 ? `${(opusPicks.reduce((a, p) => a + p.multiplier, 0) / opusPicks.length).toFixed(2)}x avg` : '---'}
-                </span>
-              </div>
-              <div className="space-y-2">
-                {opusPicks.slice(0, 3).map((pick) => (
-                  <div key={pick.id} className="xp-panel p-2">
-                    <div className="flex justify-between items-center">
-                      <span className="font-mono font-bold">${pick.token}</span>
-                      <span className={`font-bold ${pick.multiplier >= 1 ? 'text-green-600' : 'text-red-600'}`}>
-                        {pick.multiplier.toFixed(2)}x
-                      </span>
-                    </div>
-                    <div className="text-xs text-gray-500 flex justify-between mt-1">
-                      <span>{formatMcap(pick.entryMcap)} → {formatMcap(pick.currentMcap)}</span>
-                      <span>{timeAgo(pick.calledAt)}</span>
-                    </div>
-                  </div>
-                ))}
-                {opusPicks.length === 0 && <div className="xp-panel p-4 text-center text-gray-500 text-xs">No picks yet</div>}
-              </div>
-            </div>
-
-            {/* Codex */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-bold">🔵 Codex</span>
-                <span className={`text-xs ${codexPicks.length > 0 ? (codexPicks.reduce((a, p) => a + p.multiplier, 0) / codexPicks.length >= 1 ? 'text-green-600' : 'text-red-600') : ''}`}>
-                  {codexPicks.length > 0 ? `${(codexPicks.reduce((a, p) => a + p.multiplier, 0) / codexPicks.length).toFixed(2)}x avg` : '---'}
-                </span>
-              </div>
-              <div className="space-y-2">
-                {codexPicks.slice(0, 3).map((pick) => (
-                  <div key={pick.id} className="xp-panel p-2">
-                    <div className="flex justify-between items-center">
-                      <span className="font-mono font-bold">${pick.token}</span>
-                      <span className={`font-bold ${pick.multiplier >= 1 ? 'text-green-600' : 'text-red-600'}`}>
-                        {pick.multiplier.toFixed(2)}x
-                      </span>
-                    </div>
-                    <div className="text-xs text-gray-500 flex justify-between mt-1">
-                      <span>{formatMcap(pick.entryMcap)} → {formatMcap(pick.currentMcap)}</span>
-                      <span>{timeAgo(pick.calledAt)}</span>
-                    </div>
-                  </div>
-                ))}
-                {codexPicks.length === 0 && <div className="xp-panel p-4 text-center text-gray-500 text-xs">No picks yet</div>}
-              </div>
-            </div>
-          </div>
-        </XPWindow>
-      </div>
-
-      {/* Score TV - Bottom Left */}
-      <div className="fixed bottom-4 left-4 z-40">
-        <XPWindow title="Score" icon="📺" style={{ width: 200 }}>
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="font-bold">🟠 Opus</span>
-              <span className="font-mono font-bold text-orange-600">{opusStats.score.toFixed(1)}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="font-bold">🔵 Codex</span>
-              <span className="font-mono font-bold text-blue-600">{codexStats.score.toFixed(1)}</span>
-            </div>
-            <div className="text-center text-xs pt-2 border-t">
-              {opusStats.score > codexStats.score ? '🟠 Opus Leads' : codexStats.score > opusStats.score ? '🔵 Codex Leads' : 'Tied'}
-            </div>
-          </div>
-        </XPWindow>
-      </div>
-
-      {/* Balance Modal */}
-      {showBalance && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowBalance(false)}>
-          <div onClick={e => e.stopPropagation()} style={{ width: 450 }}>
-            <XPWindow title="AI Balances" icon="💰" onClose={() => setShowBalance(false)}>
-              <p className="text-xs text-gray-600 text-center mb-4">
-                Each AI started with <b>$1,000</b>. Performance based on real picks.
-              </p>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="xp-panel p-3 text-center">
-                  <div className="font-bold text-orange-600 mb-1">🟠 Claude Opus</div>
-                  <div className="text-xs text-gray-500">{opusStats.total} calls</div>
-                  <div className="text-2xl font-bold my-2">${opusStats.balance.toLocaleString()}</div>
-                  <div className={`text-sm ${opusStats.pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {opusStats.pnl >= 0 ? '+' : ''}{opusStats.pnl.toFixed(2)} ({opusStats.pnlPercent.toFixed(1)}%)
-                  </div>
-                </div>
-                <div className="xp-panel p-3 text-center">
-                  <div className="font-bold text-blue-600 mb-1">🔵 GPT Codex</div>
-                  <div className="text-xs text-gray-500">{codexStats.total} calls</div>
-                  <div className="text-2xl font-bold my-2">${codexStats.balance.toLocaleString()}</div>
-                  <div className={`text-sm ${codexStats.pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {codexStats.pnl >= 0 ? '+' : ''}{codexStats.pnl.toFixed(2)} ({codexStats.pnlPercent.toFixed(1)}%)
-                  </div>
-                </div>
-              </div>
-              {opusStats.balance !== codexStats.balance && (
-                <div className="text-center mt-4">
-                  <span className={`xp-button ${opusStats.balance > codexStats.balance ? 'text-orange-600' : 'text-blue-600'}`}>
-                    🏆 {opusStats.balance > codexStats.balance ? 'Opus' : 'Codex'} wins by ${Math.abs(opusStats.balance - codexStats.balance).toFixed(2)}
+                <div className="text-center mt-3 pt-2 border-t">
+                  <span className={`font-bold ${opusStats.score > codexStats.score ? 'text-orange-600' : 'text-blue-600'}`}>
+                    {opusStats.score > codexStats.score ? '🏆 Opus Leads!' : codexStats.score > opusStats.score ? '🏆 Codex Leads!' : '🤝 Tied!'}
                   </span>
                 </div>
-              )}
-            </XPWindow>
-          </div>
+              </div>
+
+              {/* Next Call Timer */}
+              <div className="xp-panel p-2 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                  <span className="text-xs">Live • {callsData?.totalCalls || 0} total calls</span>
+                </div>
+                <div className="text-xs">
+                  Next call: <span className="font-mono font-bold">{formatCountdown(nextCallIn)}</span>
+                </div>
+              </div>
+
+              {/* $CLASHAI Token Info */}
+              <div className="xp-panel p-3">
+                <div className="text-center text-xs text-gray-600 mb-2 font-bold">$CLASHAI TOKEN</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="xp-inset p-2 text-center">
+                    <div className="text-xs text-gray-500">Price</div>
+                    <div className="font-bold">
+                      {tokenData.price > 0 ? `$${tokenData.price.toExponential(2)}` : '---'}
+                    </div>
+                  </div>
+                  <div className="xp-inset p-2 text-center">
+                    <div className="text-xs text-gray-500">MCap</div>
+                    <div className="font-bold">
+                      {tokenData.mcap > 0 ? formatMcap(tokenData.mcap) : '---'}
+                    </div>
+                  </div>
+                </div>
+                <a 
+                  href={`https://pump.fun/${TOKEN_CONTRACT}`} 
+                  target="_blank" 
+                  className="xp-button xp-button-primary block text-center text-xs mt-3"
+                >
+                  Buy on pump.fun
+                </a>
+              </div>
+
+              {/* Quick Rules */}
+              <div className="text-xs text-gray-600 space-y-1">
+                <div>🟠 <b>Opus wins round</b> → Buyback & Burn 🔥</div>
+                <div>🔵 <b>Codex wins round</b> → Airdrop to holders 💰</div>
+                <div className="text-gray-400">Rounds close every 5 minutes</div>
+              </div>
+            </div>
+          </XPWindow>
         </div>
       )}
 
-      {/* Predictions Modal */}
-      {showPredictions && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowPredictions(false)}>
-          <div onClick={e => e.stopPropagation()} style={{ width: 600, maxHeight: '80vh' }}>
-            <XPWindow title="AI Predictions (Live)" icon="🔮" onClose={() => setShowPredictions(false)}>
-              <div className="max-h-96 overflow-y-auto space-y-3">
-                {predictions.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">Loading predictions...</div>
-                ) : (
-                  predictions.slice(0, 10).map((pred) => (
-                    <div key={pred.id} className={`xp-panel p-3 ${pred.agreement ? 'border-green-400' : 'border-orange-400'}`} style={{ borderWidth: 2 }}>
-                      <div className="font-bold text-sm mb-2">{pred.question}</div>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="bg-orange-50 p-2 rounded">
-                          <div className="flex justify-between">
-                            <span className="font-bold text-orange-600">Opus</span>
-                            <span className={pred.opus.position === 'YES' ? 'text-green-600' : 'text-red-600'}>
-                              {pred.opus.position} • {pred.opus.confidence}%
-                            </span>
-                          </div>
-                          <div className="text-gray-500 mt-1">{pred.opus.reasoning}</div>
-                        </div>
-                        <div className="bg-blue-50 p-2 rounded">
-                          <div className="flex justify-between">
-                            <span className="font-bold text-blue-600">Codex</span>
-                            <span className={pred.codex.position === 'YES' ? 'text-green-600' : 'text-red-600'}>
-                              {pred.codex.position} • {pred.codex.confidence}%
-                            </span>
-                          </div>
-                          <div className="text-gray-500 mt-1">{pred.codex.reasoning}</div>
-                        </div>
-                      </div>
-                      <div className="flex justify-between mt-2 text-xs">
-                        <span className={pred.agreement ? 'text-green-600' : 'text-orange-600'}>
-                          {pred.agreement ? '✓ Both agree' : '⚡ Split decision'}
-                        </span>
-                        <span className="text-gray-400">{timeAgo(pred.createdAt)}</span>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-              <a href="/predict" className="xp-button xp-button-primary block text-center mt-4">View All Predictions</a>
-            </XPWindow>
-          </div>
+      {/* Calls Window */}
+      {windows.calls && (
+        <div className="fixed z-20" style={{ top: 100, left: 120, width: 500 }}>
+          <XPWindow 
+            title="Calls Monitor" 
+            icon="📊" 
+            onClose={() => toggleWindow('calls')}
+            onMinimize={() => toggleWindow('calls')}
+          >
+            {/* Tabs */}
+            <div className="flex border-b border-gray-400 mb-3">
+              <button onClick={() => setActiveTab('opus')} className={`xp-tab ${activeTab === 'opus' ? 'xp-tab-active' : ''}`}>
+                🟠 Opus
+              </button>
+              <button onClick={() => setActiveTab('codex')} className={`xp-tab ${activeTab === 'codex' ? 'xp-tab-active' : ''}`}>
+                🔵 Codex
+              </button>
+            </div>
+
+            {/* Stats */}
+            <div className="grid grid-cols-4 gap-2 mb-3">
+              {[
+                { label: 'Calls', value: activeTab === 'opus' ? opusStats.total : codexStats.total },
+                { label: 'Avg', value: `${(activeTab === 'opus' ? opusStats.avg : codexStats.avg).toFixed(2)}x` },
+                { label: 'Best', value: `${(activeTab === 'opus' ? opusStats.best : codexStats.best).toFixed(2)}x` },
+                { label: 'Balance', value: `$${(activeTab === 'opus' ? opusStats.balance : codexStats.balance).toFixed(0)}` },
+              ].map((stat, i) => (
+                <div key={i} className="xp-panel text-center p-2">
+                  <div className="text-xs text-gray-600">{stat.label}</div>
+                  <div className="font-bold text-sm">{stat.value}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Recent Picks */}
+            <div className="xp-inset max-h-64 overflow-y-auto">
+              {(activeTab === 'opus' ? opusPicks : codexPicks).length > 0 ? (
+                <table className="w-full text-xs">
+                  <thead className="bg-gray-200 sticky top-0">
+                    <tr>
+                      <th className="text-left p-2">Token</th>
+                      <th className="text-right p-2">Entry</th>
+                      <th className="text-right p-2">Current</th>
+                      <th className="text-right p-2">Return</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(activeTab === 'opus' ? opusPicks : codexPicks).map((pick, i) => (
+                      <tr key={pick.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                        <td className="p-2 font-mono font-bold">${pick.token}</td>
+                        <td className="p-2 text-right text-gray-600">{formatMcap(pick.entryMcap)}</td>
+                        <td className="p-2 text-right text-gray-600">{formatMcap(pick.currentMcap)}</td>
+                        <td className={`p-2 text-right font-bold ${pick.multiplier >= 1 ? 'text-green-600' : 'text-red-600'}`}>
+                          {pick.multiplier.toFixed(2)}x
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="text-center py-8 text-gray-500">No calls yet</div>
+              )}
+            </div>
+          </XPWindow>
         </div>
       )}
+
+      {/* Predictions Window */}
+      {windows.predictions && (
+        <div className="fixed z-20" style={{ top: 80, left: 150, width: 550 }}>
+          <XPWindow 
+            title="AI Predictions" 
+            icon="🔮" 
+            onClose={() => toggleWindow('predictions')}
+            onMinimize={() => toggleWindow('predictions')}
+          >
+            <div className="max-h-80 overflow-y-auto space-y-2">
+              {predictions.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">Loading predictions...</div>
+              ) : (
+                predictions.slice(0, 8).map((pred) => (
+                  <div key={pred.id} className={`xp-panel p-2 ${pred.agreement ? 'border-l-4 border-l-green-500' : 'border-l-4 border-l-orange-500'}`}>
+                    <div className="font-bold text-xs mb-2">{pred.question}</div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="bg-orange-50 p-1.5 rounded">
+                        <span className="font-bold text-orange-600">Opus: </span>
+                        <span className={pred.opus.position === 'YES' ? 'text-green-600' : 'text-red-600'}>
+                          {pred.opus.position} ({pred.opus.confidence}%)
+                        </span>
+                      </div>
+                      <div className="bg-blue-50 p-1.5 rounded">
+                        <span className="font-bold text-blue-600">Codex: </span>
+                        <span className={pred.codex.position === 'YES' ? 'text-green-600' : 'text-red-600'}>
+                          {pred.codex.position} ({pred.codex.confidence}%)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            <a href="/predict" className="xp-button block text-center text-xs mt-3">View All →</a>
+          </XPWindow>
+        </div>
+      )}
+
+      {/* Balance Window */}
+      {windows.balance && (
+        <div className="fixed z-20" style={{ top: 120, left: 200, width: 400 }}>
+          <XPWindow 
+            title="AI Balances" 
+            icon="💰" 
+            onClose={() => toggleWindow('balance')}
+            onMinimize={() => toggleWindow('balance')}
+          >
+            <p className="text-xs text-gray-600 text-center mb-3">
+              Each AI started with <b>$1,000</b>
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="xp-panel p-3 text-center">
+                <div className="text-2xl mb-1">🟠</div>
+                <div className="font-bold text-orange-600">Claude Opus</div>
+                <div className="text-xl font-bold my-2">${opusStats.balance.toFixed(0)}</div>
+                <div className={`text-sm ${opusStats.pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {opusStats.pnl >= 0 ? '+' : ''}{opusStats.pnl.toFixed(0)} ({opusStats.pnlPercent.toFixed(1)}%)
+                </div>
+              </div>
+              <div className="xp-panel p-3 text-center">
+                <div className="text-2xl mb-1">🔵</div>
+                <div className="font-bold text-blue-600">GPT Codex</div>
+                <div className="text-xl font-bold my-2">${codexStats.balance.toFixed(0)}</div>
+                <div className={`text-sm ${codexStats.pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {codexStats.pnl >= 0 ? '+' : ''}{codexStats.pnl.toFixed(0)} ({codexStats.pnlPercent.toFixed(1)}%)
+                </div>
+              </div>
+            </div>
+          </XPWindow>
+        </div>
+      )}
+
+      {/* Docs Window */}
+      {windows.docs && (
+        <div className="fixed z-20" style={{ top: 60, left: 180, width: 450 }}>
+          <XPWindow 
+            title="Documentation" 
+            icon="📁" 
+            onClose={() => toggleWindow('docs')}
+            onMinimize={() => toggleWindow('docs')}
+          >
+            <div className="max-h-80 overflow-y-auto text-xs space-y-3">
+              <div className="xp-panel p-2">
+                <div className="font-bold text-blue-800 mb-1">🎯 What is ClashAI?</div>
+                <p className="text-gray-600">
+                  AI vs AI prediction battle arena. Two AI models compete by picking trending Solana memecoins every 2 minutes.
+                </p>
+              </div>
+              
+              <div className="xp-panel p-2">
+                <div className="font-bold text-blue-800 mb-1">⚙️ How It Works</div>
+                <ol className="list-decimal list-inside text-gray-600 space-y-1">
+                  <li>Every 2 min: fetch trending tokens</li>
+                  <li>Each AI picks their best token</li>
+                  <li>Prices update in real-time</li>
+                  <li>Score = sum of multipliers</li>
+                </ol>
+              </div>
+
+              <div className="xp-panel p-2">
+                <div className="font-bold text-blue-800 mb-1">💎 Tokenomics</div>
+                <div className="text-gray-600 space-y-1">
+                  <div>🟠 <b>Opus wins</b> → Buyback & Burn 🔥</div>
+                  <div>🔵 <b>Codex wins</b> → Airdrop 💰</div>
+                </div>
+              </div>
+
+              <a href="/docs" className="xp-button block text-center">Full Documentation →</a>
+            </div>
+          </XPWindow>
+        </div>
+      )}
+
+      {/* Taskbar */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 xp-taskbar h-10">
+        <button className="xp-start-button h-full flex items-center gap-2 px-4">
+          <span>🪟</span> <span className="font-bold">Start</span>
+        </button>
+        
+        <div className="flex-1 flex items-center gap-1 px-2 h-full">
+          {windows.ai && (
+            <button onClick={() => toggleWindow('ai')} className="xp-button h-7 text-xs flex items-center gap-1 min-w-24">
+              ⚔️ ClashAI
+            </button>
+          )}
+          {windows.calls && (
+            <button onClick={() => toggleWindow('calls')} className="xp-button h-7 text-xs flex items-center gap-1">
+              📊 Calls
+            </button>
+          )}
+          {windows.predictions && (
+            <button onClick={() => toggleWindow('predictions')} className="xp-button h-7 text-xs flex items-center gap-1">
+              🔮 Predictions
+            </button>
+          )}
+          {windows.balance && (
+            <button onClick={() => toggleWindow('balance')} className="xp-button h-7 text-xs flex items-center gap-1">
+              💰 Balance
+            </button>
+          )}
+          {windows.docs && (
+            <button onClick={() => toggleWindow('docs')} className="xp-button h-7 text-xs flex items-center gap-1">
+              📁 Docs
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3 px-3 h-full bg-[#0f3c8c] text-white text-xs">
+          <span>🔊</span>
+          <span>{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+        </div>
+      </div>
     </div>
   );
 }
