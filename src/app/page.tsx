@@ -117,16 +117,21 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  // Countdown timer for next call
+  // Countdown timer for next call - based on real last call time
   useEffect(() => {
-    const timer = setInterval(() => {
-      setNextCallIn(prev => {
-        if (prev <= 1) return 120; // Reset to 2 minutes
-        return prev - 1;
-      });
-    }, 1000);
+    const calculateNextCall = () => {
+      if (callsData?.opus?.recent?.[0]?.calledAt) {
+        const lastCall = new Date(callsData.opus.recent[0].calledAt).getTime();
+        const nextCall = lastCall + (2 * 60 * 1000); // 2 minutes after last call
+        const remaining = Math.max(0, Math.floor((nextCall - Date.now()) / 1000));
+        setNextCallIn(remaining > 120 ? 120 : remaining);
+      }
+    };
+    
+    calculateNextCall();
+    const timer = setInterval(calculateNextCall, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [callsData]);
 
   const formatCountdown = (seconds: number) => {
     const m = Math.floor(seconds / 60);
